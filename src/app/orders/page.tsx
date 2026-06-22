@@ -69,6 +69,12 @@ export default function OrdersPage() {
       
       if (response.ok) {
         setOrders(data.orders || []);
+      } else if (response.status === 401) {
+        // User not logged in - show empty state
+        setOrders([]);
+      } else if (response.status === 503) {
+        // Database not configured
+        setError('SERVICE_NOT_CONFIGURED');
       } else {
         setError(data.error || 'حدث خطأ');
       }
@@ -102,13 +108,24 @@ export default function OrdersPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {error && (
+        {error === 'SERVICE_NOT_CONFIGURED' ? (
+          <div className="bg-sand border border-mist rounded-2xl p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-charcoal/10 rounded-full flex items-center justify-center">
+              <MessageSquare className="w-8 h-8 text-charcoal" />
+            </div>
+            <h2 className="font-cairo text-xl font-bold text-charcoal mb-2">الخدمة غير مفعلة حاليًا</h2>
+            <p className="font-cairo text-secondary mb-6">قاعدة البيانات غير مربوطة. تواصل مع المسؤول.</p>
+            <Link href="/search" className="inline-block px-6 py-3 bg-charcoal text-white rounded-xl font-cairo font-medium">
+              استكشف خدماتنا
+            </Link>
+          </div>
+        ) : error ? (
           <div className="p-4 bg-red-100 border border-red-200 rounded-xl text-red-700 font-cairo mb-6">
             {error}
           </div>
-        )}
+        ) : null}
 
-        {orders.length === 0 ? (
+        {orders.length === 0 && error !== 'SERVICE_NOT_CONFIGURED' ? (
           <div className="text-center py-12">
             <div className="w-20 h-20 mx-auto mb-6 bg-sand rounded-full flex items-center justify-center">
               <MessageSquare className="w-10 h-10 text-champagne" />
