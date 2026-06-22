@@ -1,26 +1,42 @@
 import { PrismaClient } from '../src/generated/prisma';
-import * as dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
-
-dotenv.config({ path: '.env.local' });
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@flystay.com';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@Password123!';
+  const adminEmail = process.env.ADMIN_EMAIL || 'hrq@hotmail.com';
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  // Production enforcement: require ADMIN_PASSWORD
+  if (process.env.NODE_ENV === 'production' && !adminPassword) {
+    throw new Error('ADMIN_PASSWORD_REQUIRED: ADMIN_PASSWORD environment variable must be set in production');
+  }
+
+  if (!adminPassword) {
+    throw new Error('ADMIN_PASSWORD_REQUIRED: ADMIN_PASSWORD environment variable must be set');
+  }
 
   const existingAdmin = await prisma.user.findUnique({
     where: { email: adminEmail },
   });
 
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+
   if (existingAdmin) {
-    console.log(`Admin user already exists: ${adminEmail}`);
+    // Update existing admin with new password
+    const updatedAdmin = await prisma.user.update({
+      where: { email: adminEmail },
+      data: {
+        passwordHash,
+        role: 'ADMIN',
+        email: adminEmail,
+      },
+    });
+    console.log(`Updated admin user: ${updatedAdmin.email} (Role: ${updatedAdmin.role})`);
     return;
   }
 
-  const passwordHash = await bcrypt.hash(adminPassword, 12);
-
+  // Create new admin
   const admin = await prisma.user.create({
     data: {
       name: 'Admin',
@@ -39,7 +55,7 @@ main()
     process.exit(0);
   })
   .catch((e) => {
-    console.error('Seed failed:', e);
+    console.error('Seed failed:', e.message);
     process.exit(1);
   })
   .finally(async () => {
