@@ -1,35 +1,50 @@
 'use client';
 
-import { Heart, MapPin, Star, Plane } from 'lucide-react';
+import { Heart, MapPin, Star, Plane, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import BottomNav from '@/components/layout/BottomNav';
 import { EmptyState } from '@/components/ui/ErrorEmpty';
-
-const mockFavorites = [
-  {
-    id: 1,
-    type: 'flight',
-    title: 'طيران إلى دبي',
-    subtitle: 'الرياض - دبي',
-    price: '1,250',
-    currency: 'ر.س',
-    rating: 4.8,
-    image: 'dubai',
-  },
-  {
-    id: 2,
-    type: 'hotel',
-    title: 'فندق أتلانتس',
-    subtitle: 'دبي - نخلة جميرا',
-    price: '2,400',
-    currency: 'ر.س',
-    rating: 4.9,
-    image: 'atlantis',
-  },
-];
+import { useState, useEffect } from 'react';
 
 export default function FavoritesPage() {
-  const favorites = mockFavorites;
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
+
+  const fetchFavorites = async () => {
+    try {
+      const response = await fetch('/api/favorites');
+      if (!response.ok) {
+        if (response.status === 503) {
+          setError('SERVICE_NOT_CONFIGURED');
+          return;
+        }
+        throw new Error('Failed to fetch favorites');
+      }
+      const data = await response.json();
+      setFavorites(data.favorites || []);
+    } catch {
+      setError('فشل في تحميل المفضلات');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-ivory pb-24">
+        <Header />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 text-champagne animate-spin" />
+        </div>
+        <BottomNav />
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-ivory pb-24">
@@ -45,7 +60,13 @@ export default function FavoritesPage() {
 
       {/* Favorites List */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {favorites.length === 0 ? (
+        {error === 'SERVICE_NOT_CONFIGURED' ? (
+          <EmptyState
+            icon="heart"
+            title="الخدمة غير مفعلة حاليًا"
+            description="قاعدة البيانات غير مربوطة. سجّل الدخول للوصول للمفضلة."
+          />
+        ) : favorites.length === 0 ? (
           <EmptyState
             icon="heart"
             title="لا توجد مفضلات"

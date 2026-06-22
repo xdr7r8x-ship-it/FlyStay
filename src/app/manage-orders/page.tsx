@@ -1,51 +1,58 @@
 'use client';
 
-import { useState } from 'react';
-import { Package, Filter, Search, Plane, Building2, Check, Clock, X, Calendar } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Package, Filter, Search, Plane, Building2, Check, Clock, X, Calendar, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import BottomNav from '@/components/layout/BottomNav';
 import { EmptyState } from '@/components/ui/ErrorEmpty';
 
-type OrderStatus = 'all' | 'pending' | 'confirmed' | 'cancelled';
+type OrderStatus = 'all' | 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 
-const orders = [
-  {
-    id: 'ORD-001',
-    type: 'flight',
-    title: 'الرياض - دبي',
-    status: 'pending',
-    date: '2026-07-15',
-    price: '1,250',
-    createdAt: '2026-06-20',
-  },
-  {
-    id: 'ORD-002',
-    type: 'hotel',
-    title: 'فندق أتلانتس',
-    status: 'confirmed',
-    date: '2026-08-01',
-    price: '2,400',
-    createdAt: '2026-06-18',
-  },
-  {
-    id: 'ORD-003',
-    type: 'flight',
-    title: 'جدة - إسطنبول',
-    status: 'cancelled',
-    date: '2026-09-10',
-    price: '1,800',
-    createdAt: '2026-06-15',
-  },
-];
+interface Order {
+  id: string;
+  orderNumber: string;
+  serviceType: string;
+  status: string;
+  date: string;
+  totalAmount: number;
+  currency: string;
+}
 
 export default function ManageOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders');
+      if (!response.ok) {
+        if (response.status === 503) {
+          setError('SERVICE_NOT_CONFIGURED');
+          setOrders([]);
+          return;
+        }
+        throw new Error('Failed to fetch orders');
+      }
+      const data = await response.json();
+      setOrders(data.orders || []);
+    } catch {
+      setError('فشل في تحميل الطلبات');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesSearch = order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          order.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          order.serviceType?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -100,11 +107,21 @@ export default function ManageOrdersPage() {
 
       {/* Orders List */}
       <div className="max-w-4xl mx-auto px-4">
-        {filteredOrders.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-champagne animate-spin" />
+          </div>
+        ) : error === 'SERVICE_NOT_CONFIGURED' ? (
+          <EmptyState
+            icon="package"
+            title="الخدمة غير مفعلة حاليًا"
+            description="قاعدة البيانات غير مربوطة. تواصل مع المسؤول."
+          />
+        ) : filteredOrders.length === 0 ? (
           <EmptyState
             icon="package"
             title="لا توجد طلبات"
-            description={searchQuery ? "لم يتم العثور على طلبات مطابقة للبحث" : "لم يتم العثور على طلبات بهذا الحالة"}
+            description={searchQuery ? "لم يتم العثور على طلبات مطابقة للبحث" : "لم يتم العثور على طلبات بعد"}
           />
         ) : (
           <div className="space-y-4">
@@ -116,32 +133,32 @@ export default function ManageOrdersPage() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      order.type === 'flight' ? 'bg-champagne/20' : 'bg-purple-500/20'
+                      order.serviceType === 'FLIGHT' ? 'bg-champagne/20' : 'bg-purple-500/20'
                     }`}>
-                      {order.type === 'flight' ? (
+                      {order.serviceType === 'FLIGHT' ? (
                         <Plane className="w-6 h-6 text-champagne" />
                       ) : (
                         <Building2 className="w-6 h-6 text-purple-500" />
                       )}
                     </div>
                     <div>
-                      <p className="font-cairo font-semibold text-charcoal">{order.title}</p>
-                      <p className="font-cairo text-sm text-muted">{order.id}</p>
+                      <p className="font-cairo font-semibold text-charcoal">{order.serviceType}</p>
+                      <p className="font-cairo text-sm text-muted">{order.orderNumber}</p>
                     </div>
                   </div>
 
                   {/* Status Badge */}
                   <span className={`px-3 py-1 rounded-full text-xs font-cairo font-medium ${
-                    order.status === 'pending'
+                    order.status === 'PENDING'
                       ? 'bg-warning/10 text-warning'
-                      : order.status === 'confirmed'
+                      : order.status === 'CONFIRMED'
                       ? 'bg-success/10 text-success'
                       : 'bg-error/10 text-error'
                   }`}>
-                    {order.status === 'pending' && <Clock className="w-3 h-3 inline ml-1" />}
-                    {order.status === 'confirmed' && <Check className="w-3 h-3 inline ml-1" />}
-                    {order.status === 'cancelled' && <X className="w-3 h-3 inline ml-1" />}
-                    {order.status === 'pending' ? 'قيد المراجعة' : order.status === 'confirmed' ? 'مؤكدة' : 'ملغاة'}
+                    {order.status === 'PENDING' && <Clock className="w-3 h-3 inline ml-1" />}
+                    {order.status === 'CONFIRMED' && <Check className="w-3 h-3 inline ml-1" />}
+                    {order.status === 'CANCELLED' && <X className="w-3 h-3 inline ml-1" />}
+                    {order.status === 'PENDING' ? 'قيد المراجعة' : order.status === 'CONFIRMED' ? 'مؤكدة' : 'ملغاة'}
                   </span>
                 </div>
 
@@ -153,7 +170,7 @@ export default function ManageOrdersPage() {
                     </div>
                   </div>
                   <p className="font-cairo font-bold text-charcoal text-lg">
-                    {order.price} <span className="text-sm font-normal">ر.س</span>
+                    {order.totalAmount.toLocaleString()} <span className="text-sm font-normal">{order.currency}</span>
                   </p>
                 </div>
               </div>

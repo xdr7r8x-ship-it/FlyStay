@@ -46,9 +46,34 @@ export default function SearchPage() {
     setError(null);
     setHasSearched(true);
 
-    // Simulate search
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
+    try {
+      const endpoint = activeTab === 'flights' ? '/api/flights/search' : 
+                       activeTab === 'hotels' ? '/api/hotels/search' : 
+                       '/api/packages/search';
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin: from,
+          destination: to,
+          departDate,
+          returnDate: tripType !== 'oneway' ? returnDate : undefined,
+          passengers,
+        }),
+      });
+
+      if (response.status === 503) {
+        setError('الخدمة غير مفعلة حاليًا. موفري الخدمة غير مربوطين.');
+      } else if (!response.ok) {
+        setError('حدث خطأ أثناء البحث. حاول مرة أخرى.');
+      }
+      // Results will be shown if successful
+    } catch {
+      setError('فشل في الاتصال. تأكد من اتصالك بالإنترنت.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

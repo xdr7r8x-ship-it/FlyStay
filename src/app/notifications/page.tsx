@@ -1,40 +1,49 @@
 'use client';
 
-import { Bell, Calendar, MessageSquare, AlertCircle } from 'lucide-react';
+import { Bell, Calendar, MessageSquare, AlertCircle, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import BottomNav from '@/components/layout/BottomNav';
 import { EmptyState } from '@/components/ui/ErrorEmpty';
+import { useState, useEffect } from 'react';
 
-const mockNotifications = [
-  {
-    id: 1,
-    type: 'booking',
-    title: 'تم تأكيد حجزك',
-    message: 'تم تأكيد حجز رحلتك إلى دبي بنجاح. رقم الحجز: ORD-002',
-    time: 'منذ ساعة',
-    read: false,
-  },
-  {
-    id: 2,
-    type: 'offer',
-    title: 'عرض خاص',
-    message: 'خصم 20% على فنادق دبي لهذا الأسبوع فقط!',
-    time: 'منذ يوم',
-    read: false,
-  },
-  {
-    id: 3,
-    type: 'system',
-    title: 'تحديث التطبيق',
-    message: 'يتوفر تحديث جديد لتطبيق FlyStay مع ميزات جديدة.',
-    time: 'منذ 3 أيام',
-    read: true,
-  },
-];
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
 
 export default function NotificationsPage() {
-  const notifications = mockNotifications;
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications');
+      if (!response.ok) {
+        if (response.status === 503) {
+          setError('SERVICE_NOT_CONFIGURED');
+          return;
+        }
+        throw new Error('Failed to fetch notifications');
+      }
+      const data = await response.json();
+      setNotifications(data.notifications || []);
+    } catch {
+      setError('فشل في تحميل الإشعارات');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <main className="min-h-screen bg-ivory pb-24">
@@ -59,7 +68,17 @@ export default function NotificationsPage() {
 
       {/* Notifications List */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {notifications.length === 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-champagne animate-spin" />
+          </div>
+        ) : error === 'SERVICE_NOT_CONFIGURED' ? (
+          <EmptyState
+            icon="bell"
+            title="الخدمة غير مفعلة حاليًا"
+            description="قاعدة البيانات غير مربوطة. سجّل الدخول للوصول للإشعارات."
+          />
+        ) : notifications.length === 0 ? (
           <EmptyState
             icon="bell"
             title="لا توجد إشعارات"
@@ -71,7 +90,7 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 className={`bg-sand border rounded-2xl p-4 transition-all hover:shadow-md ${
-                  notification.read ? 'border-mist' : 'border-champagne/30'
+                  notification.isRead ? 'border-mist' : 'border-champagne/30'
                 }`}
               >
                 <div className="flex gap-4">
@@ -105,12 +124,12 @@ export default function NotificationsPage() {
                           {notification.message}
                         </p>
                       </div>
-                      {!notification.read && (
+                      {!notification.isRead && (
                         <span className="w-2.5 h-2.5 bg-champagne rounded-full flex-shrink-0 mt-2" />
                       )}
                     </div>
                     <p className="font-cairo text-xs text-muted mt-2">
-                      {notification.time}
+                      {new Date(notification.createdAt).toLocaleDateString('ar-SA')}
                     </p>
                   </div>
                 </div>
