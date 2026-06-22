@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { getPrisma } from '@/lib/prisma';
 import { getAuthUserFromRequest } from '@/lib/auth';
 import { adminUpdateOrderSchema } from '@/lib/validations';
 
@@ -8,13 +8,21 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      return NextResponse.json(
+        { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'الخدمة غير متاحة حالياً' } },
+        { status: 503 }
+      );
+    }
+
     const { id } = await params;
     const user = await getAuthUserFromRequest(request);
-    
+
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
-    
+
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
@@ -34,11 +42,11 @@ export async function GET(
         },
       },
     });
-    
+
     if (!order) {
       return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
     }
-    
+
     return NextResponse.json({ order });
   } catch (error) {
     console.error('Admin get order error:', error);
@@ -51,38 +59,46 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      return NextResponse.json(
+        { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'الخدمة غير متاحة حالياً' } },
+        { status: 503 }
+      );
+    }
+
     const { id } = await params;
     const user = await getAuthUserFromRequest(request);
-    
+
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
-    
+
     const order = await prisma.order.findUnique({
       where: { id },
     });
-    
+
     if (!order) {
       return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 });
     }
-    
+
     const body = await request.json();
     const validation = adminUpdateOrderSchema.safeParse(body);
-    
+
     if (!validation.success) {
       return NextResponse.json(
         { error: validation.error.issues[0].message },
         { status: 400 }
       );
     }
-    
+
     const { status, note } = validation.data;
     const updates: Record<string, unknown> = {};
-    
+
     // If status is being changed
     if (status && status !== order.status) {
       updates.status = status;
-      
+
       // Create status history
       await prisma.orderStatusHistory.create({
         data: {
@@ -91,7 +107,7 @@ export async function PATCH(
           note: note || `تم تحديث الحالة بواسطة المدير`,
         },
       });
-      
+
       // Create notification for user
       const statusLabels: Record<string, string> = {
         NEW: 'جديد',
@@ -102,7 +118,7 @@ export async function PATCH(
         CANCELLED: 'ملغي',
         CLOSED: 'مغلق',
       };
-      
+
       await prisma.notification.create({
         data: {
           userId: order.userId,
@@ -111,7 +127,7 @@ export async function PATCH(
         },
       });
     }
-    
+
     // If note is provided, add admin note
     if (note) {
       await prisma.adminNote.create({
@@ -122,7 +138,7 @@ export async function PATCH(
         },
       });
     }
-    
+
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: updates,
@@ -143,7 +159,7 @@ export async function PATCH(
         },
       },
     });
-    
+
     return NextResponse.json({ success: true, order: updatedOrder });
   } catch (error) {
     console.error('Admin update order error:', error);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { getPrisma } from '@/lib/prisma';
 import { getAuthUserFromRequest } from '@/lib/auth';
 import { updateOfferSchema } from '@/lib/validations';
 
@@ -8,6 +8,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      return NextResponse.json(
+        { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'الخدمة غير متاحة حالياً' } },
+        { status: 503 }
+      );
+    }
     const { id } = await params;
     const user = await getAuthUserFromRequest(request);
     
