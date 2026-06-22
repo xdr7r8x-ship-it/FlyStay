@@ -89,6 +89,7 @@ model User {
   payments      Payment[]
   auditLogs    AuditLog[]      @relation("AuditActor")
   providerLogs ProviderLog[]
+  travelRequests TravelRequest[]
 
   @@map("users")
 }
@@ -329,4 +330,163 @@ model Offer {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("offers")
+}
+
+// Travel Encyclopedia Models
+
+model TravelDestination {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  cityAr            String   @map("city_ar")
+  cityEn            String?  @map("city_en")
+  countryAr         String   @map("country_ar")
+  countryEn         String?  @map("country_en")
+  regionAr          String?  @map("region_ar")
+  descriptionAr     String   @map("description_ar")
+  shortSummaryAr    String?  @map("short_summary_ar")
+  heroImageUrl      String?  @map("hero_image_url")
+  galleryImages     Json     @default("[]") @map("gallery_images")
+  travelStyles      Json     @default("[]") @map("travel_styles")
+  bestForAr         Json     @default("[]") @map("best_for_ar")
+  notBestForAr      Json     @default("[]") @map("not_best_for_ar")
+  popularAreasAr    Json     @default("[]") @map("popular_areas_ar")
+  topActivitiesAr   Json     @default("[]") @map("top_activities_ar")
+  suggestedDurations Json    @default("[]") @map("suggested_durations")
+  budgetLevel       String   @default("MIXED") @map("budget_level")
+  seasonNotesAr     String?  @map("season_notes_ar")
+  airportInfoAr     String?  @map("airport_info_ar")
+  transportNotesAr  String?  @map("transport_notes_ar")
+  familyNotesAr     String?  @map("family_notes_ar")
+  safetyNotesAr     String?  @map("safety_notes_ar")
+  status            String   @default("ACTIVE")
+  sourceType        String   @default("CURATED") @map("source_type")
+  lastReviewedAt    DateTime? @map("last_reviewed_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  areas     TravelArea[]
+  activities TravelActivity[]
+  templates TripTemplate[]
+  travelRequests TravelRequest[]
+
+  @@map("travel_destinations")
+  @@index([slug])
+  @@index([status])
+  @@index([countryAr])
+}
+
+model TravelArea {
+  id            String   @id @default(cuid())
+  destinationId String   @map("destination_id")
+  nameAr        String   @map("name_ar")
+  nameEn        String?  @map("name_en")
+  descriptionAr String?  @map("description_ar")
+  bestForAr     Json     @default("[]") @map("best_for_ar")
+  nearbyHighlightsAr Json @default("[]") @map("nearby_highlights_ar")
+  budgetLevel   String?  @map("budget_level")
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  destination TravelDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@map("travel_areas")
+  @@index([destinationId])
+}
+
+model TravelActivity {
+  id            String   @id @default(cuid())
+  destinationId String   @map("destination_id")
+  titleAr       String   @map("title_ar")
+  category      String
+  descriptionAr String?  @map("description_ar")
+  durationHintAr String? @map("duration_hint_ar")
+  familyFriendly Boolean @default(false) @map("family_friendly")
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  destination TravelDestination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@map("travel_activities")
+  @@index([destinationId])
+  @@index([category])
+}
+
+model TripTemplate {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  titleAr       String   @map("title_ar")
+  serviceType   String   @map("service_type")
+  destinationId String?  @map("destination_id")
+  cityAr        String?  @map("city_ar")
+  summaryAr     String   @map("summary_ar")
+  idealFor      Json     @default("[]")
+  durationDays  Int?     @map("duration_days")
+  includesAr    Json     @default("[]") @map("includes_ar")
+  itinerary     Json     @default("[]")
+  budgetLevel   String   @default("MIXED") @map("budget_level")
+  requirementsAr Json    @default("[]") @map("requirements_ar")
+  disclaimersAr Json     @default("[]") @map("disclaimers_ar")
+  status        String   @default("ACTIVE")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  destination    TravelDestination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+  travelRequests TravelRequest[]
+
+  @@map("trip_templates")
+  @@index([slug])
+  @@index([status])
+  @@index([serviceType])
+}
+
+model StayGuide {
+  id                  String   @id @default(cuid())
+  type                String
+  cityAr              String   @map("city_ar")
+  titleAr             String   @map("title_ar")
+  descriptionAr       String?  @map("description_ar")
+  capacityHintAr      String?  @map("capacity_hint_ar")
+  featuresAr          Json     @default("[]") @map("features_ar")
+  idealFor            Json     @default("[]")
+  hasPoolHint         Boolean? @map("has_pool_hint")
+  hasOutdoorSeatingHint Boolean? @map("has_outdoor_seating_hint")
+  budgetLevel         String   @default("MID") @map("budget_level")
+  status              String   @default("ACTIVE")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("stay_guides")
+  @@index([type])
+  @@index([status])
+  @@index([cityAr])
+}
+
+model TravelRequest {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  sourceType    String   @default("MANUAL") @map("source_type")
+  serviceType   String   @map("service_type")
+  destinationId String?  @map("destination_id")
+  templateId    String?  @map("template_id")
+  cityAr        String?  @map("city_ar")
+  startDate     DateTime? @map("start_date") @db.Date
+  endDate       DateTime? @map("end_date") @db.Date
+  guests        Int?     @map("guests")
+  rooms         Int?     @map("rooms")
+  budgetLevel   String?  @map("budget_level")
+  notes         String?  @map("notes")
+  details       Json     @default("{}")
+  status        String   @default("NEW")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  destination TravelDestination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+  template    TripTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@map("travel_requests")
+  @@index([userId])
+  @@index([status])
 }
