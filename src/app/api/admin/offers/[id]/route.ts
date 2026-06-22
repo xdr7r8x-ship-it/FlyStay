@@ -1,0 +1,53 @@
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+import { getAuthUserFromRequest } from '@/lib/auth';
+import { updateOfferSchema } from '@/lib/validations';
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const user = await getAuthUserFromRequest(request);
+    
+    if (!user || user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
+    }
+    
+    const offer = await prisma.offer.findUnique({
+      where: { id },
+    });
+    
+    if (!offer) {
+      return NextResponse.json({ error: 'العرض غير موجود' }, { status: 404 });
+    }
+    
+    const body = await request.json();
+    const validation = updateOfferSchema.safeParse(body);
+    
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error.issues[0].message },
+        { status: 400 }
+      );
+    }
+    
+    const { title, description, code, active } = validation.data;
+    
+    const updatedOffer = await prisma.offer.update({
+      where: { id },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(code !== undefined && { code }),
+        ...(active !== undefined && { active }),
+      },
+    });
+    
+    return NextResponse.json({ success: true, offer: updatedOffer });
+  } catch (error) {
+    console.error('Admin update offer error:', error);
+    return NextResponse.json({ error: 'حدث خطأ' }, { status: 500 });
+  }
+}

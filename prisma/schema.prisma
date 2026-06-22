@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ServiceType {
+  HOTEL
+  CHALET
+  FLIGHT
+  PACKAGE
+}
+
+enum OrderStatus {
+  NEW
+  REVIEWING
+  WAITING_USER
+  OFFER_SENT
+  CONFIRMED_MANUALLY
+  CANCELLED
+  CLOSED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String   @map("password_hash")
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  orders        Order[]
+  notifications Notification[]
+  
+  @@map("users")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique @map("order_number")
+  userId      String      @map("user_id")
+  serviceType ServiceType @map("service_type")
+  details     Json
+  status      OrderStatus @default(NEW)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  statusHistory OrderStatusHistory[]
+  adminNotes    AdminNote[]
+  
+  @@map("orders")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String      @map("order_id")
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now()) @map("created_at")
+  
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  @@map("order_status_history")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
+}
+
+model AdminNote {
+  id        String   @id @default(cuid())
+  orderId   String   @map("order_id")
+  adminId   String   @map("admin_id")
+  note      String
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  @@map("admin_notes")
+}
+
+model Offer {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  code        String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("offers")
+}

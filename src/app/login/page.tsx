@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import { LoadingSpinner } from '@/components/ui/Loading';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,12 +20,27 @@ export default function LoginPage() {
     setError('');
     setIsLoading(true);
 
-    // Simulate login
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsLoading(false);
-    // Redirect to profile
-    window.location.href = '/profile';
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'حدث خطأ أثناء تسجيل الدخول');
+        setIsLoading(false);
+        return;
+      }
+
+      // Redirect to profile on success
+      router.push('/profile');
+    } catch {
+      setError('حدث خطأ في الاتصال');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -91,7 +108,7 @@ export default function LoginPage() {
 
           {/* Error */}
           {error && (
-            <div className="p-3 bg-error/10 border border-error/20 rounded-xl text-error font-cairo text-sm">
+            <div className="p-3 bg-red-100 border border-red-200 rounded-xl text-red-700 font-cairo text-sm">
               {error}
             </div>
           )}
