@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <rect fill="#F8F6F1" width="1920" height="1080"/>
+  <rect fill="#E7E3DC" x="100" y="150" width="1720" height="600" rx="32"/>
+  <rect fill="#2B2D31" x="150" y="200" width="400" height="80" rx="16"/>
+  <text x="350" y="255" fill="#F8F6F1" font-family="serif" font-size="36" text-anchor="middle">FlyStay</text>
+  <rect fill="#CDB68B" x="700" y="200" width="200" height="50" rx="8"/>
+  <rect fill="#CDB68B" x="920" y="200" width="200" height="50" rx="8"/>
+  <rect fill="#CDB68B" x="1140" y="200" width="200" height="50" rx="8"/>
+  <rect fill="#2B2D31" x="1600" y="200" width="150" height="50" rx="8"/>
+  <rect fill="#E7E3DC" x="200" y="350" width="500" height="300" rx="24"/>
+  <rect fill="#2B2D31" x="800" y="350" width="500" height="140" rx="24"/>
+  <rect fill="#2B2D31" x="800" y="510" width="500" height="140" rx="24"/>
+  <rect fill="#CDB68B" x="1400" y="350" width="320" height="300" rx="24"/>
+  <text x="960" y="640" fill="#F8F6F1" font-family="sans-serif" font-size="28" text-anchor="middle">رحلتك القادمة تبدأ من هنا</text>
+  <rect fill="#CDB68B" x="300" y="450" width="300" height="150" rx="16"/>
+  <rect fill="#CDB68B" x="300" y="650" width="300" height="150" rx="16"/>
+  <rect fill="#CDB68B" x="700" y="650" width="300" height="150" rx="16"/>
+  <rect fill="#2B2D31" x="1100" y="650" width="300" height="150" rx="16"/>
+  <text x="1920" y="1060" fill="#9A9A9C" font-family="sans-serif" font-size="14" text-anchor="end">Luxury Travel Minimal - Reference 01</text>
+</svg>

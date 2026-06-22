@@ -1,0 +1,146 @@
+{
+  "brand": {
+    "name": "FlyStay",
+    "style": "Luxury Travel Minimal",
+    "feeling": "فاخر، هادئ، عالمي، نظيف، مناسب للسوق السعودي والخليجي"
+  },
+  "colors": {
+    "primary": {
+      "name": "Charcoal",
+      "hex": "#2B2D31",
+      "usage": "الأزرار الرئيسية، النصوص المهمة، الخلفيات الداكنة"
+    },
+    "accent": {
+      "name": "Champagne",
+      "hex": "#CDB68B",
+      "usage": "اللمسات الفاخرة، الحدود، الأيقونات المميزة"
+    },
+    "background": {
+      "name": "Ivory",
+      "hex": "#F8F6F1",
+      "usage": "خلفية الصفحة الرئيسية"
+    },
+    "surface": {
+      "name": "Sand",
+      "hex": "#E7E3DC",
+      "usage": "البطاقات، العناصر الثانوية"
+    },
+    "border": {
+      "name": "Mist",
+      "hex": "#F1F1F1",
+      "usage": "الحدود الناعمة، الفواصل"
+    },
+    "text": {
+      "primary": "#2B2D31",
+      "secondary": "#5C5D60",
+      "muted": "#9A9A9C"
+    },
+    "status": {
+      "success": "#4A7C59",
+      "error": "#C45C5C",
+      "warning": "#D4A84B",
+      "info": "#5B7B9A"
+    }
+  },
+  "fonts": {
+    "arabic": {
+      "name": "Cairo",
+      "family": "'Cairo', 'sans-serif'",
+      "weights": [300, 400, 500, 600, 700],
+      "usage": "النصوص العربية"
+    },
+    "english": {
+      "name": "Playfair Display",
+      "family": "'Playfair Display', 'serif'",
+      "weights": [400, 500, 600, 700],
+      "usage": "العناوين الإنجليزية، الشعارات"
+    }
+  },
+  "direction": {
+    "primary": "rtl",
+    "secondary": "ltr",
+    "language": "Arabic First",
+    "fallback": "en"
+  },
+  "referenceImages": {
+    "primary": {
+      "path": "docs/brand/reference/flystay-brand-reference-02-primary.jpeg",
+      "description": "المرجع الأساسي للتصميم - Luxury Travel Minimal"
+    },
+    "secondary": {
+      "path": "docs/brand/reference/flystay-brand-reference-01.jpeg",
+      "description": "مرجع ثانوي إضافي"
+    },
+    "allPaths": [
+      "docs/brand/reference/flystay-brand-reference-01.jpeg",
+      "docs/brand/reference/flystay-brand-reference-02-primary.jpeg",
+      "public/brand/reference/flystay-brand-reference-01.jpeg",
+      "public/brand/reference/flystay-brand-reference-02-primary.jpeg",
+      "src/assets/brand/reference/flystay-brand-reference-01.jpeg",
+      "src/assets/brand/reference/flystay-brand-reference-02-primary.jpeg"
+    ]
+  },
+  "implementation": {
+    "css": "src/styles/flystay-brand.css",
+    "typescript": "src/lib/brand/flystayBrand.ts",
+    "docs": [
+      "docs/BRAND_IDENTITY_LOCK.md",
+      "docs/brand/BRAND_IDENTITY_LOCK.md",
+      "docs/AGENT_BRAND_PROMPT.md"
+    ]
+  },
+  "screens": {
+    "home": {
+      "path": "src/app/page.tsx",
+      "components": ["Header", "HeroCard", "ServicesGrid", "FeaturedDestinations", "Footer", "WhatsAppButton"]
+    },
+    "search": {
+      "path": "src/app/search/page.tsx",
+      "components": ["SearchTabs", "TripOptions", "SearchForm", "ResultsList"]
+    },
+    "services": {
+      "path": "src/app/services/page.tsx",
+      "components": ["ServiceCard", "ComparisonTable"]
+    },
+    "booking": {
+      "path": "src/app/booking/page.tsx",
+      "components": ["BookingForm", "OrderSummary"]
+    },
+    "orders": {
+      "path": "src/app/orders/page.tsx",
+      "components": ["OrderList", "OrderStatus", "EmptyState"]
+    },
+    "favorites": {
+      "path": "src/app/favorites/page.tsx",
+      "components": ["FavoriteCard", "EmptyState"]
+    },
+    "notifications": {
+      "path": "src/app/notifications/page.tsx",
+      "components": ["NotificationList", "EmptyState"]
+    },
+    "profile": {
+      "path": "src/app/profile/page.tsx",
+      "components": ["ProfileCard", "Settings"]
+    },
+    "dashboard": {
+      "path": "src/app/dashboard/page.tsx",
+      "components": ["Stats", "RecentOrders", "QuickActions"]
+    },
+    "aiAgent": {
+      "path": "src/app/ai-agent/page.tsx",
+      "components": ["ChatInterface", "Suggestions"]
+    }
+  },
+  "states": {
+    "required": ["loading", "error", "empty", "success"],
+    "components": ["all"]
+  },
+  "pwa": {
+    "enabled": true,
+    "manifest": "public/manifest.json",
+    "icons": "public/icons/"
+  },
+  "version": "1.0.0",
+  "lockedAt": "2026-06-22",
+  "enforcedBy": "AI Agent"
+}
