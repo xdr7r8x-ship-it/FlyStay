@@ -66,10 +66,13 @@ export default function ProfilePage() {
           <MenuItem icon={HelpCircle} label="المساعدة والدعم" href="/help" />
         </div>
 
-        <button className="w-full mt-6 py-4 bg-error/10 text-error rounded-xl font-cairo font-medium flex items-center justify-center gap-2 hover:bg-error/20 transition-colors">
-          <LogOut className="w-5 h-5" />
-          تسجيل الخروج
-        </button>
+        {/* Only show logout for logged-in users */}
+        {isLoggedIn && (
+          <button className="w-full mt-6 py-4 bg-error/10 text-error rounded-xl font-cairo font-medium flex items-center justify-center gap-2 hover:bg-error/20 transition-colors">
+            <LogOut className="w-5 h-5" />
+            تسجيل الخروج
+          </button>
+        )}
       </div>
 
       <BottomNav />
