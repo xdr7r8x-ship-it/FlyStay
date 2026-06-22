@@ -4,11 +4,19 @@
  *
  * Returns recent audit logs from database.
  * FAIL-CLOSED: Returns 503 if database is not configured.
+ * Requires ADMIN role.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
+import { requireRoles } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
+  // RBAC: Require ADMIN role
+  const authResult = await requireRoles(request, ['ADMIN']);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   try {
     const prisma = getPrisma();
     if (!prisma) {
@@ -19,16 +27,20 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    
+    // Map query params to correct Prisma schema fields
+    const actorId = searchParams.get('userId') || searchParams.get('actorId');
     const action = searchParams.get('action');
-    const resource = searchParams.get('resource');
+    const entityType = searchParams.get('entityType') || searchParams.get('resource');
+    const entityId = searchParams.get('entityId');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
     const where: Record<string, unknown> = {};
-    if (userId) where.userId = userId;
+    if (actorId) where.actorId = actorId;
     if (action) where.action = action;
-    if (resource) where.resource = resource;
+    if (entityType) where.entityType = entityType;
+    if (entityId) where.entityId = entityId;
 
     const logs = await prisma.auditLog.findMany({
       where,

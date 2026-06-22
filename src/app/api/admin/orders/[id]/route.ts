@@ -1,12 +1,25 @@
+/**
+ * Admin Order API
+ * GET/PATCH /api/admin/orders/[id]
+ *
+ * Returns or updates a specific order for admin management.
+ * Requires ADMIN role.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
-import { getAuthUserFromRequest } from '@/lib/auth';
+import { requireRoles } from '@/lib/auth';
 import { adminUpdateOrderSchema } from '@/lib/validations';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // RBAC: Require ADMIN role
+  const authResult = await requireRoles(request, ['ADMIN']);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   try {
     const prisma = getPrisma();
     if (!prisma) {
@@ -17,11 +30,6 @@ export async function GET(
     }
 
     const { id } = await params;
-    const user = await getAuthUserFromRequest(request);
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
-    }
 
     const order = await prisma.order.findUnique({
       where: { id },
@@ -58,6 +66,14 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // RBAC: Require ADMIN role
+  const authResult = await requireRoles(request, ['ADMIN']);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
+  const { user } = authResult as { user: { userId: string; email: string; role: string } };
+
   try {
     const prisma = getPrisma();
     if (!prisma) {
@@ -68,11 +84,6 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const user = await getAuthUserFromRequest(request);
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
-    }
 
     const order = await prisma.order.findUnique({
       where: { id },

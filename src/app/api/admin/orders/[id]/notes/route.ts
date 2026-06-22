@@ -1,11 +1,26 @@
+/**
+ * Admin Order Notes API
+ * POST /api/admin/orders/[id]/notes
+ *
+ * Adds a note to a specific order.
+ * Requires ADMIN role.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
-import { getAuthUserFromRequest } from '@/lib/auth';
+import { requireRoles } from '@/lib/auth';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // RBAC: Require ADMIN role
+  const authResult = await requireRoles(request, ['ADMIN']);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
+  const { user } = authResult as { user: { userId: string; email: string; role: string } };
+
   try {
     const prisma = getPrisma();
     if (!prisma) {
@@ -16,11 +31,6 @@ export async function POST(
     }
 
     const { id } = await params;
-    const user = await getAuthUserFromRequest(request);
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
-    }
 
     const order = await prisma.order.findUnique({
       where: { id },

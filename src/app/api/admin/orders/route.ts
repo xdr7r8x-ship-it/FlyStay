@@ -1,8 +1,21 @@
+/**
+ * Admin Orders API
+ * GET /api/admin/orders
+ *
+ * Returns all orders for admin management.
+ * Requires ADMIN role.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
-import { getAuthUserFromRequest } from '@/lib/auth';
+import { requireRoles } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
+  // RBAC: Require ADMIN role
+  const authResult = await requireRoles(request, ['ADMIN']);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   try {
     const prisma = getPrisma();
     if (!prisma) {
@@ -10,12 +23,6 @@ export async function GET(request: NextRequest) {
         { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'الخدمة غير متاحة حالياً' } },
         { status: 503 }
       );
-    }
-
-    const user = await getAuthUserFromRequest(request);
-
-    if (!user || user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'غير مصرح' }, { status: 401 });
     }
 
     const searchParams = request.nextUrl.searchParams;
