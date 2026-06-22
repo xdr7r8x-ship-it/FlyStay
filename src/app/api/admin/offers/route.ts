@@ -6,7 +6,7 @@
  * Requires ADMIN role.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getPrisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/auth';
 import { createOfferSchema } from '@/lib/validations';
 
@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const prisma = getPrisma();
     if (!prisma) {
       return NextResponse.json(
         { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'الخدمة غير متاحة حالياً' } },
@@ -45,7 +44,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const prisma = getPrisma();
     if (!prisma) {
       return NextResponse.json(
         { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'الخدمة غير متاحة حالياً' } },

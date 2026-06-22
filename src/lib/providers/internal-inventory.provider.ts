@@ -1,6 +1,6 @@
 /**
  * FlyStay Internal Inventory Provider
- * 
+ *
  * Manages internal inventory for Chalets and Resthouses.
  * NO MOCK DATA - Only real inventory added by Admin.
  * FAIL-CLOSED: Returns 503 if provider is not configured.
@@ -16,25 +16,7 @@ import {
   BookingStatus,
 } from './provider.types';
 import { providerRegistry } from './provider-registry';
-
-// Lazy-load PrismaClient to avoid build-time errors
-let _prisma: any = null;
-
-function getPrisma(): any {
-  if (!process.env.DATABASE_URL) {
-    return null;
-  }
-  if (!_prisma) {
-    // Dynamic import at runtime only
-    const { PrismaClient } = require('@/generated/prisma');
-    const { PrismaPg } = require('@prisma/adapter-pg');
-    const { Pool } = require('pg');
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-    const adapter = new PrismaPg(pool);
-    _prisma = new PrismaClient({ adapter });
-  }
-  return _prisma;
-}
+import { prisma } from '@/lib/prisma';
 
 export class InternalInventoryProvider {
   isConfigured(): boolean {
@@ -67,7 +49,7 @@ export class InternalInventoryProvider {
         whereClause.capacity = { gte: input.guests };
       }
 
-      const items: any[] = await getPrisma()?.inventoryItem.findMany({
+      const items = await prisma.inventoryItem.findMany({
         where: whereClause,
         include: {
           availabilities: {
@@ -81,15 +63,15 @@ export class InternalInventoryProvider {
       });
 
       const availableItems: InventoryItemType[] = items
-        .filter((item: any) => {
-          const availabilities: any[] = item.availabilities;
+        .filter((item) => {
+          const availabilities = item.availabilities;
           if (availabilities.length === 0) return false;
           const checkinDate = new Date(input.checkin);
           const checkoutDate = new Date(input.checkout);
           const nights = Math.ceil((checkoutDate.getTime() - checkinDate.getTime()) / (1000 * 60 * 60 * 24));
-          return availabilities.length >= nights && availabilities.every((a: any) => a.availableUnits > 0);
+          return availabilities.length >= nights && availabilities.every((a) => a.availableUnits > 0);
         })
-        .map((item: any) => ({
+        .map((item) => ({
           id: item.id,
           title: item.title,
           serviceType: item.serviceType as 'CHALET' | 'RESTHOUSE',
@@ -104,7 +86,7 @@ export class InternalInventoryProvider {
           serviceFee: Number(item.serviceFee),
           currency: item.currency || 'SAR',
           terms: item.terms || '',
-          availability: (item.availabilities as any[]).map((a: any) => ({
+          availability: (item.availabilities as any[]).map((a) => ({
             date: a.date.toISOString().split('T')[0],
             availableUnits: a.availableUnits,
             priceOverride: a.priceOverride ? Number(a.priceOverride) : undefined,
@@ -138,7 +120,7 @@ export class InternalInventoryProvider {
     }
 
     try {
-      const item: any = await getPrisma()?.inventoryItem.findUnique({
+      const item = await prisma.inventoryItem.findUnique({
         where: { id: params.itemId },
         include: { availabilities: true },
       });

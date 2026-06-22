@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPrisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { hashPassword, createToken } from '@/lib/auth';
 import { registerSchema } from '@/lib/validations';
 
 export async function POST(request: NextRequest) {
   try {
-    const prisma = getPrisma();
     
     // Check if prisma is available (database is configured)
     if (!prisma) {

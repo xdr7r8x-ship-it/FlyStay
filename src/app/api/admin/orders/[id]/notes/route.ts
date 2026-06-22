@@ -6,7 +6,7 @@
  * Requires ADMIN role.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getPrisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { requireRoles } from '@/lib/auth';
 
 export async function POST(
@@ -22,7 +22,6 @@ export async function POST(
   const { user } = authResult as { user: { userId: string; email: string; role: string } };
 
   try {
-    const prisma = getPrisma();
     if (!prisma) {
       return NextResponse.json(
         { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'الخدمة غير متاحة حالياً' } },

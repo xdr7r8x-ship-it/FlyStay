@@ -11,7 +11,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
-import { getPrisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { providerRegistry } from '@/lib/providers/provider-registry';
 
 type TapEventStatus = 
@@ -178,7 +178,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if database is configured
-    const prisma = getPrisma();
     if (!prisma) {
       console.error('[Tap Webhook] Database not configured');
       return NextResponse.json(

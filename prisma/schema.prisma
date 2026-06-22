@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -81,14 +82,14 @@ model User {
   role         Role     @default(USER)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
-  
+
   orders        Order[]
   notifications Notification[]
   bookings      Booking[]
   payments      Payment[]
   auditLogs    AuditLog[]      @relation("AuditActor")
   providerLogs ProviderLog[]
-  
+
   @@map("users")
 }
 
@@ -110,14 +111,14 @@ model Order {
   status      OrderStatus @default(NEW)
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
-  
+
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   statusHistory OrderStatusHistory[]
   adminNotes    AdminNote[]
   bookings      Booking[]
   payments      Payment[]
   providerLogs  ProviderLog[]
-  
+
   @@map("orders")
 }
 
@@ -127,9 +128,9 @@ model OrderStatusHistory {
   status    OrderStatus
   note      String?
   createdAt DateTime    @default(now()) @map("created_at")
-  
+
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
+
   @@map("order_status_history")
 }
 
@@ -141,9 +142,9 @@ model Notification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("notifications")
 }
 
