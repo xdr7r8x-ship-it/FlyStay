@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, MessageSquare } from 'lucide-react';
+import { Send, Bot, User, Sparkles, AlertCircle } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import BottomNav from '@/components/layout/BottomNav';
-import { LoadingSpinner } from '@/components/ui/Loading';
 
 interface Message {
   id: string;
@@ -14,10 +13,17 @@ interface Message {
 }
 
 const quickActions = [
-  'ابحث عن فنادق في دبي',
-  'أفضل عروض شهر العسل',
-  'رحلات إلى إسطنبول',
-  'فنادق 5 نجوم في الرياض',
+  'أبغى أسافر دبي',
+  'أبي فندق في الرياض',
+  'أبي شاليه الجمعة',
+  'وش تنصحني؟',
+];
+
+const serviceOptions = [
+  { id: 'flight', label: 'رحلة', icon: '✈️', fields: ['من وين؟', 'إلى وين؟', 'متى؟', 'كم مسافر؟'] },
+  { id: 'hotel', label: 'فندق', icon: '🏨', fields: ['المدينة؟', 'تاريخ الدخول؟', 'تاريخ الخروج؟', 'كم شخص؟'] },
+  { id: 'package', label: 'باقة', icon: '🎁', fields: ['الوجهة؟', 'متى؟', 'عدد الأشخاص؟'] },
+  { id: 'chalet', label: 'شاليه', icon: '🏡', fields: ['المدينة؟', 'التاريخ؟', 'كم شخص؟', 'مسبح؟'] },
 ];
 
 export default function AIAgentPage() {
@@ -25,12 +31,13 @@ export default function AIAgentPage() {
     {
       id: '1',
       role: 'assistant',
-      content: 'مرحباً! أنا وكيلك الذكي في FlyStay. كيف يمكنني مساعدتك في رحلتك القادمة؟',
+      content: 'هلا والله! أنا مساعد FlyStay 🌟\n\nأقدر أساعدك في تجهيز طلب السفر. بس أسألك几个 أسئلة عشان أفهم طلبك:\n\n• وش تبي بالضبط؟ رحلة، فندق، باقة، ولا شاليه؟\n• وين تبي تروح؟\n• متى تاريخ السفر؟\n• كم عدد الأشخاص؟',
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -54,26 +61,57 @@ export default function AIAgentPage() {
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
+    setError(null);
 
-    // Simulate AI response
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input.trim() }),
+      });
 
-    const responses = [
-      'يسعدني مساعدتك! هل تبحث عن وجهة معينة أم تريد اقتراحات؟',
-      'رائع! أحتاج quelques تفاصيل إضافية عن تواريخ سفرك وعدد المسافرين.',
-      'وجدت لك بعض العروض المميزة! هل تريد التفاصيل؟',
-      'أوصي بفندق أتلانتس دبي للرحلة. هل تريد الحجز؟',
-    ];
+      const data = await response.json();
 
-    const aiMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: responses[Math.floor(Math.random() * responses.length)],
-      timestamp: new Date(),
-    };
+      if (!response.ok) {
+        setError(data.error?.message || 'حدث خطأ');
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: 'عذرًا، صار خطأ. جرب مرة ثانية.',
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: data.message,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+    } catch {
+      setError('فشل الاتصال');
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'عذرًا، ما قدرت أساعدك الحين. جرب مرة ثانية.',
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
-    setMessages((prev) => [...prev, aiMessage]);
-    setIsTyping(false);
+  const handleQuickAction = (action: string) => {
+    setInput(action);
   };
 
   return (
@@ -88,18 +126,19 @@ export default function AIAgentPage() {
           </div>
           <div>
             <h1 className="font-cairo text-2xl font-bold">الوكيل الذكي</h1>
-            <p className="font-cairo text-champagne text-sm">متاح لمساعدتك 24/7</p>
+            <p className="font-cairo text-champagne text-sm">متاح لمساعدتك في سفرك</p>
           </div>
         </div>
       </div>
 
       {/* Quick Actions */}
       <div className="max-w-4xl mx-auto px-4 py-4 w-full">
+        <p className="font-cairo text-sm text-muted mb-3">أسئلة سريعة:</p>
         <div className="flex flex-wrap gap-2">
           {quickActions.map((action, idx) => (
             <button
               key={idx}
-              onClick={() => setInput(action)}
+              onClick={() => handleQuickAction(action)}
               className="px-4 py-2 bg-sand border border-mist rounded-full font-cairo text-sm text-charcoal hover:border-champagne transition-colors"
             >
               {action}
@@ -107,6 +146,16 @@ export default function AIAgentPage() {
           ))}
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="max-w-4xl mx-auto px-4 w-full">
+          <div className="flex items-center gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
+            <AlertCircle className="w-4 h-4" />
+            <span className="font-cairo text-sm">{error}</span>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 max-w-4xl mx-auto px-4 py-4 w-full overflow-y-auto">
@@ -139,7 +188,9 @@ export default function AIAgentPage() {
                     : 'bg-charcoal text-white'
                 }`}
               >
-                <p className="font-cairo leading-relaxed">{message.content}</p>
+                <p className="font-cairo leading-relaxed whitespace-pre-line">
+                  {message.content}
+                </p>
                 <p
                   className={`text-xs mt-2 ${
                     message.role === 'assistant' ? 'text-muted' : 'text-white/60'
@@ -188,17 +239,25 @@ export default function AIAgentPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="اكتب رسالتك..."
+            placeholder="اكتب رسالتك أو اختر سؤالاً سريعاً..."
             className="flex-1 px-5 py-4 bg-sand border border-mist rounded-2xl font-cairo text-charcoal placeholder:text-muted focus:outline-none focus:border-champagne"
+            disabled={isTyping}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isTyping}
             className="w-14 h-14 bg-charcoal text-white rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
+      </div>
+
+      {/* Privacy Note */}
+      <div className="max-w-4xl mx-auto px-4 pb-4 w-full">
+        <p className="font-cairo text-xs text-muted text-center">
+          🔒 نحمي بياناتك ونستخدمها فقط لتنفيذ طلبك داخل FlyStay، ولا نعرضها لأي طرف غير مخوّل.
+        </p>
       </div>
 
       <BottomNav />
