@@ -1,9 +1,10 @@
 /**
  * FlyStay Payments Provider - Tap Integration
- * 
+ *
  * Production integration with Tap Payments API.
  * NO CARD DATA STORED - Uses Tap Hosted Checkout only.
  * FAIL-CLOSED: Returns 503 if provider is not configured.
+ * Uses TAP_SECRET_KEY, TAP_PUBLIC_KEY, TAP_WEBHOOK_SECRET, TAP_ENVIRONMENT env vars.
  */
 
 import crypto from 'crypto';
@@ -38,7 +39,7 @@ export function generateIdempotencyKey(prefix: string, reference: string): strin
 
 class PaymentsProvider {
   isConfigured(): boolean {
-    return providerRegistry.isConfigured(ProviderType.PAYMENTS);
+    return !!(process.env.TAP_SECRET_KEY && process.env.TAP_PUBLIC_KEY);
   }
 
   private createServiceNotConfiguredError(): ProviderError {
@@ -48,6 +49,13 @@ class PaymentsProvider {
     };
   }
 
+  private getBaseUrl(): string {
+    const isProduction = process.env.TAP_ENVIRONMENT === 'production';
+    return isProduction 
+      ? 'https://api.tap.payments.com'
+      : 'https://api.tap.gatewai.com';
+  }
+
   async createPayment(input: PaymentCreateInput): Promise<ProviderResult<PaymentResult>> {
     if (!this.isConfigured()) {
       return { success: false, error: this.createServiceNotConfiguredError() };
@@ -55,16 +63,14 @@ class PaymentsProvider {
 
     const secretKey = process.env.TAP_SECRET_KEY;
     const publicKey = process.env.TAP_PUBLIC_KEY;
-    
+
     if (!secretKey || !publicKey) {
       return { success: false, error: this.createServiceNotConfiguredError() };
     }
 
     try {
-      const baseUrl = process.env.TAP_ENV === 'production'
-        ? 'https://api.tap.payments.com'
-        : 'https://api.tap.gatewai.com';
-
+      const baseUrl = this.getBaseUrl();
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://flystay-ten.vercel.app';
       const idempotencyKey = generateIdempotencyKey('PAY', input.orderId);
 
       const payload = {
@@ -80,7 +86,7 @@ class PaymentsProvider {
           },
         },
         redirect: {
-          url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://flystay.com'}/booking/${input.orderId}/confirmation`,
+          url: `${appUrl}/payment/success`,
         },
         reference: { merchant: input.orderId },
         metadata: { orderId: input.orderId, ...input.metadata },
@@ -137,9 +143,7 @@ class PaymentsProvider {
     }
 
     try {
-      const baseUrl = process.env.TAP_ENV === 'production'
-        ? 'https://api.tap.payments.com'
-        : 'https://api.tap.gatewai.com';
+      const baseUrl = this.getBaseUrl();
 
       const response = await fetch(`${baseUrl}/v2/checkouts/${paymentId}`, {
         method: 'GET',

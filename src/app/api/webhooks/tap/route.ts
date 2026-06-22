@@ -8,21 +8,23 @@
  * - WebhookEvent storage
  * - Payment status updates
  * - FAIL-CLOSED: Returns 503 if provider not configured.
+ * 
+ * Webhook Signature Verification:
+ * - Uses 'tap-signature' header
+ * - HMAC-SHA256 with webhook secret
+ * - Format: t=<timestamp>,v1=<signature>
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { providerRegistry } from '@/lib/providers/provider-registry';
-
-type TapEventStatus = 
-  | 'CAPTURED' | 'PAID' | 'FAILED' | 'DECLINED' 
-  | 'CANCELLED' | 'VOID' | 'REFUNDED' | 'PENDING'
-  | 'INITIATED' | 'RESTORED' | 'TIMEDOUT' | 'UNKNOWN';
+import { ProviderType } from '@/lib/providers/provider.types';
 
 type PaymentStatusMap = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
 
 /**
  * Verify Tap webhook signature
+ * Per Tap documentation, signature format is t=<timestamp>,v1=<signature>
  */
 function verifyTapWebhookSignature(
   rawBody: string,
@@ -30,25 +32,35 @@ function verifyTapWebhookSignature(
   secret: string
 ): boolean {
   if (!signature || !secret) return false;
-  
+
   try {
     // Tap uses HMAC-SHA256 signature verification
     // Signature format: t=timestamp,v1=signature
     const parts = signature.split(',');
     const timestampPart = parts.find(p => p.startsWith('t='));
     const hashPart = parts.find(p => p.startsWith('v1='));
-    
+
     if (!timestampPart || !hashPart) return false;
-    
+
     const timestamp = timestampPart.replace('t=', '');
     const expectedHash = hashPart.replace('v1=', '');
-    
+
     // Create HMAC-SHA256 using Node.js crypto
     const computedHash = createHmac('sha256', secret)
       .update(timestamp + '.' + rawBody)
       .digest('base64');
+
+    // Use timing-safe comparison
+    const sigBuffer = Buffer.from(expectedHash, 'base64');
+    const computedBuffer = Buffer.from(computedHash, 'base64');
     
-    return computedHash === expectedHash;
+    if (sigBuffer.length !== computedBuffer.length) return false;
+    
+    let result = 0;
+    for (let i = 0; i < sigBuffer.length; i++) {
+      result |= sigBuffer[i] ^ computedBuffer[i];
+    }
+    return result === 0;
   } catch {
     return false;
   }
@@ -64,9 +76,9 @@ function redactSensitive(obj: Record<string, unknown>): Record<string, unknown> 
     'apiKey', 'apiSecret', 'accessToken', 'refreshToken',
     'TAP_SECRET_KEY', 'TAP_WEBHOOK_SECRET'
   ];
-  
+
   const redacted: Record<string, unknown> = {};
-  
+
   for (const [key, value] of Object.entries(obj)) {
     if (sensitiveFields.some(f => key.toLowerCase().includes(f.toLowerCase()))) {
       redacted[key] = '[REDACTED]';
@@ -76,7 +88,7 @@ function redactSensitive(obj: Record<string, unknown>): Record<string, unknown> 
       redacted[key] = value;
     }
   }
-  
+
   return redacted;
 }
 
@@ -91,7 +103,6 @@ function getEventId(payload: Record<string, unknown>): string | null {
  * Extract provider payment ID from Tap webhook payload
  */
 function getProviderPaymentId(payload: Record<string, unknown>): string | null {
-  // Tap response structure
   if (payload.id && typeof payload.id === 'string') {
     return payload.id;
   }
@@ -109,7 +120,7 @@ function getOrderId(payload: Record<string, unknown>): string | null {
       return metadata.orderId;
     }
   }
-  
+
   // Try reference.merchant
   if (payload.reference && typeof payload.reference === 'object') {
     const reference = payload.reference as Record<string, unknown>;
@@ -117,23 +128,24 @@ function getOrderId(payload: Record<string, unknown>): string | null {
       return reference.merchant;
     }
   }
-  
+
   // Try top-level order_id
   if (payload.order_id && typeof payload.order_id === 'string') {
     return payload.order_id;
   }
-  
+
   return null;
 }
 
 /**
  * Map Tap event status to our Payment status
+ * FAIL-SAFE: Unknown statuses default to PENDING, never PAID
  */
 function getPaymentStatus(tapStatus: string | undefined): PaymentStatusMap | null {
   if (!tapStatus) return null;
-  
+
   const status = tapStatus.toUpperCase();
-  
+
   if (status === 'CAPTURED' || status === 'PAID') {
     return 'PAID';
   }
@@ -149,16 +161,19 @@ function getPaymentStatus(tapStatus: string | undefined): PaymentStatusMap | nul
   if (status === 'PENDING' || status === 'INITIATED' || status === 'TIMEDOUT' || status === 'RESTORED') {
     return 'PENDING';
   }
-  
+
+  // Unknown status - fail safe, keep as PENDING
+  console.log(`[Tap Webhook] Unknown status: ${tapStatus}, defaulting to PENDING`);
   return 'PENDING';
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // Read raw body BEFORE any processing
     const rawBody = await request.text();
     const signature = request.headers.get('tap-signature') || '';
-    
-    // Check if webhook secret is configured
+
+    // Check if webhook secret is configured - FAIL-CLOSED
     const webhookSecret = providerRegistry.getWebhookSecret();
     if (!webhookSecret) {
       console.error('[Tap Webhook] TAP_WEBHOOK_SECRET not configured');
@@ -171,18 +186,25 @@ export async function POST(request: NextRequest) {
     // Verify signature BEFORE any processing
     if (!verifyTapWebhookSignature(rawBody, signature, webhookSecret)) {
       console.error('[Tap Webhook] Invalid signature');
+      
+      // Create error log
+      try {
+        await prisma.providerLog.create({
+          data: {
+            providerType: ProviderType.PAYMENTS,
+            providerName: 'Tap',
+            action: 'WEBHOOK_SIGNATURE_INVALID',
+            status: 'ERROR',
+            errorMessage: 'Invalid webhook signature',
+          },
+        });
+      } catch (logError) {
+        console.error('[Tap Webhook] Failed to create provider log:', logError);
+      }
+
       return NextResponse.json(
         { error: { code: 'INVALID_SIGNATURE', message: 'Invalid webhook signature' } },
         { status: 401 }
-      );
-    }
-
-    // Check if database is configured
-    if (!prisma) {
-      console.error('[Tap Webhook] Database not configured');
-      return NextResponse.json(
-        { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'Service not available' } },
-        { status: 503 }
       );
     }
 
@@ -203,6 +225,19 @@ export async function POST(request: NextRequest) {
     const providerPaymentId = getProviderPaymentId(payload);
     const orderId = getOrderId(payload);
     const eventType = payload.event as string || 'payment';
+    const redactedPayload = redactSensitive(payload);
+
+    // Log webhook received
+    await prisma.providerLog.create({
+      data: {
+        providerType: ProviderType.PAYMENTS,
+        providerName: 'Tap',
+        action: 'WEBHOOK_RECEIVED',
+        status: 'SUCCESS',
+        requestId: eventId || undefined,
+        errorMessage: tapStatus ? `status: ${tapStatus}` : undefined,
+      },
+    });
 
     // Idempotency: Check if event already processed
     if (eventId) {
@@ -212,79 +247,146 @@ export async function POST(request: NextRequest) {
 
       if (existingEvent && existingEvent.processed) {
         console.log(`[Tap Webhook] Duplicate event ${eventId}, already processed`);
-        return NextResponse.json({ 
-          received: true, 
+        
+        await prisma.providerLog.create({
+          data: {
+            providerType: ProviderType.PAYMENTS,
+            providerName: 'Tap',
+            action: 'WEBHOOK_DUPLICATE',
+            status: 'SUCCESS',
+            requestId: eventId,
+          },
+        });
+
+        return NextResponse.json({
+          received: true,
           processed: false,
-          reason: 'duplicate_event' 
+          reason: 'duplicate_event'
         });
       }
     }
 
-    // Save WebhookEvent with signature verified
-    const redactedPayload = redactSensitive(payload);
-    
+    // Create WebhookEvent with processed=false initially
     const webhookEvent = await prisma.webhookEvent.create({
       data: {
-        providerName: 'tap',
+        providerName: 'Tap',
         eventType: eventType || 'payment_status',
         eventId: eventId || `no-id-${Date.now()}`,
         signatureVerified: true,
-        processed: true,
+        processed: false,
         rawPayload: redactedPayload as object,
+      },
+    });
+
+    // Log signature valid
+    await prisma.providerLog.create({
+      data: {
+        providerType: ProviderType.PAYMENTS,
+        providerName: 'Tap',
+        action: 'WEBHOOK_SIGNATURE_VALID',
+        status: 'SUCCESS',
+        requestId: eventId || undefined,
       },
     });
 
     // Map Tap status to our payment status
     const paymentStatus = getPaymentStatus(tapStatus);
 
+    // Update Payment and Order if we have enough info
     if (paymentStatus && (providerPaymentId || orderId)) {
       try {
-        // Find payment by providerPaymentId or orderId
+        let payment = null;
+
+        // Find payment
         if (providerPaymentId) {
-          await prisma.payment.updateMany({
+          payment = await prisma.payment.findFirst({
             where: { providerPaymentId },
-            data: { status: paymentStatus },
           });
-          console.log(`[Tap Webhook] Updated payment status to ${paymentStatus}`);
         } else if (orderId) {
-          await prisma.payment.updateMany({
+          payment = await prisma.payment.findFirst({
             where: { orderId },
+            orderBy: { createdAt: 'desc' },
+          });
+        }
+
+        if (payment) {
+          // Update payment status
+          await prisma.payment.update({
+            where: { id: payment.id },
             data: { status: paymentStatus },
           });
-          console.log(`[Tap Webhook] Updated payment status to ${paymentStatus}`);
+
+          // Update order payment status
+          await prisma.order.update({
+            where: { id: payment.orderId },
+            data: { paymentStatus: paymentStatus },
+          });
+
+          // NOTE: bookingStatus is NOT updated here
+          // Booking confirmation requires separate provider confirmation
+
+          console.log(`[Tap Webhook] Updated payment ${payment.id} to ${paymentStatus}`);
+
+          await prisma.providerLog.create({
+            data: {
+              orderId: payment.orderId,
+              userId: payment.userId,
+              providerType: ProviderType.PAYMENTS,
+              providerName: 'Tap',
+              action: 'PAYMENT_STATUS_UPDATED',
+              status: 'SUCCESS',
+              requestId: eventId || undefined,
+              errorMessage: `status: ${paymentStatus}`,
+            },
+          });
+
+          await prisma.auditLog.create({
+            data: {
+              actorId: 'webhook',
+              actorRole: 'SYSTEM',
+              action: 'PAYMENT_STATUS_CHANGED',
+              entityType: 'Payment',
+              entityId: payment.id,
+              details: {
+                provider: 'Tap',
+                eventType,
+                eventId,
+                oldStatus: payment.status,
+                newStatus: paymentStatus,
+                providerPaymentId,
+                orderId: payment.orderId,
+              },
+            },
+          });
         }
       } catch (dbError) {
         console.error('[Tap Webhook] Failed to update payment:', dbError);
-        // Don't fail the webhook - event is saved
+        
+        await prisma.providerLog.create({
+          data: {
+            providerType: ProviderType.PAYMENTS,
+            providerName: 'Tap',
+            action: 'PAYMENT_STATUS_UPDATE_FAILED',
+            status: 'ERROR',
+            requestId: eventId || undefined,
+            errorMessage: dbError instanceof Error ? dbError.message : 'Database error',
+          },
+        });
+
+        // Don't fail webhook, just return error
       }
     }
 
-    // Log audit for the webhook processing
-    try {
-      await prisma.auditLog.create({
-        data: {
-          action: 'WEBHOOK_PROCESSED',
-          entityType: 'WebhookEvent',
-          entityId: webhookEvent.id,
-          details: {
-            provider: 'tap',
-            eventType,
-            eventId,
-            paymentStatus,
-            providerPaymentId,
-            orderId,
-          },
-        },
-      });
-    } catch (auditError) {
-      console.error('[Tap Webhook] Failed to create audit log:', auditError);
-      // Don't fail the webhook
-    }
+    // Mark webhook event as processed ONLY after successful handling
+    await prisma.webhookEvent.update({
+      where: { id: webhookEvent.id },
+      data: { processed: true },
+    });
 
-    return NextResponse.json({ 
-      received: true, 
+    return NextResponse.json({
+      received: true,
       processed: true,
-      eventId: webhookEvent.id 
+      eventId: webhookEvent.id
     });
 
   } catch (error) {

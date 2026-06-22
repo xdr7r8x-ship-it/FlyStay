@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
     return authResult;
   }
 
+  const tapConfigured = paymentsProvider.isConfigured();
+  const webhookSecretConfigured = !!process.env.TAP_WEBHOOK_SECRET;
+
   const status = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
@@ -43,8 +46,11 @@ export async function GET(request: NextRequest) {
       },
       tap: {
         name: 'Tap Payments',
-        configured: paymentsProvider.isConfigured(),
-        environment: 'production',
+        configured: tapConfigured,
+        environment: process.env.TAP_ENVIRONMENT || 'sandbox',
+        secretConfigured: tapConfigured,
+        publicKeyConfigured: tapConfigured,
+        webhookConfigured: webhookSecretConfigured,
       },
       internalInventory: {
         name: 'Internal Inventory (Chalets)',

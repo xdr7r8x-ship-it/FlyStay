@@ -6,45 +6,56 @@
  * Requires ADMIN role.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { providerRegistry } from '@/lib/providers';
+import { providerRegistry, ProviderType } from '@/lib/providers';
 import { requireRoles } from '@/lib/auth';
-
-const querySchema = z.object({
-  provider: z.enum(['amadeus', 'hotelbeds', 'tap', 'internal']).optional(),
-  status: z.enum(['success', 'error']).optional(),
-  limit: z.string().transform(Number).pipe(z.number().min(1).max(100)).optional(),
-});
 
 /**
  * Redact sensitive data from logs
  */
 function redactLog(log: Record<string, unknown>): Record<string, unknown> {
   const redacted = { ...log };
-  
+
   // List of sensitive fields to redact
   const sensitiveFields = [
     'apiKey', 'apiSecret', 'secret', 'token', 'password',
     'authorization', 'cardNumber', 'cvv', 'cvv2', 'cvc',
     'accessToken', 'refreshToken', 'bearer'
   ];
-  
+
   for (const field of sensitiveFields) {
     if (field in redacted && typeof redacted[field] === 'string') {
       redacted[field] = '[REDACTED]';
     }
   }
-  
+
   // Redact nested sensitive data
   if (redacted.request && typeof redacted.request === 'object') {
     (redacted as Record<string, unknown>).request = redactLog(redacted.request as Record<string, unknown>);
   }
-  
+
   if (redacted.response && typeof redacted.response === 'object') {
     (redacted as Record<string, unknown>).response = redactLog(redacted.response as Record<string, unknown>);
   }
-  
+
   return redacted;
+}
+
+// Map string provider names to ProviderType enum
+function mapProviderName(name: string | null): ProviderType | undefined {
+  if (!name) return undefined;
+  const mapping: Record<string, ProviderType> = {
+    'amadeus': ProviderType.FLIGHTS,
+    'flights': ProviderType.FLIGHTS,
+    'hotelbeds': ProviderType.HOTELS,
+    'hotels': ProviderType.HOTELS,
+    'tap': ProviderType.PAYMENTS,
+    'payments': ProviderType.PAYMENTS,
+    'packages': ProviderType.PACKAGES,
+    'internal': ProviderType.INTERNAL,
+    'chalets': ProviderType.CHALETS,
+    'resthouses': ProviderType.RESTHOUSES,
+  };
+  return mapping[name.toLowerCase()];
 }
 
 export async function GET(request: NextRequest) {
@@ -56,16 +67,44 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const query = querySchema.parse({
-      provider: searchParams.get('provider'),
-      status: searchParams.get('status'),
-      limit: searchParams.get('limit') || '50',
-    });
+    
+    // Parse query params with defaults
+    const provider = searchParams.get('provider');
+    const status = searchParams.get('status');
+    const limitStr = searchParams.get('limit');
+    const limit = limitStr ? parseInt(limitStr, 10) : 50;
+
+    // Validate limit
+    if (isNaN(limit) || limit < 1 || limit > 100) {
+      return NextResponse.json(
+        { error: { code: 'VALIDATION_ERROR', message: 'الحد يجب أن يكون بين 1 و 100' } },
+        { status: 400 }
+      );
+    }
+
+    // Map provider name to enum
+    const providerType = mapProviderName(provider);
+
+    // Validate provider if provided
+    if (provider && !providerType) {
+      return NextResponse.json(
+        { error: { code: 'VALIDATION_ERROR', message: 'مزود غير صالح' } },
+        { status: 400 }
+      );
+    }
+
+    // Validate status if provided
+    if (status && !['success', 'error'].includes(status.toLowerCase())) {
+      return NextResponse.json(
+        { error: { code: 'VALIDATION_ERROR', message: 'حالة غير صالحة' } },
+        { status: 400 }
+      );
+    }
 
     const logs = providerRegistry.getLogs({
-      provider: query.provider,
-      status: query.status,
-      limit: query.limit,
+      provider: providerType,
+      status: status || undefined,
+      limit: limit,
     });
 
     // Redact sensitive data before returning
@@ -76,12 +115,6 @@ export async function GET(request: NextRequest) {
       count: redactedLogs.length,
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'بيانات غير صالحة' } },
-        { status: 400 }
-      );
-    }
     console.error('Provider logs error:', error);
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'خطأ في الخادم' } },

@@ -1,6 +1,6 @@
 /**
  * FlyStay Provider Registry
- * 
+ *
  * Manages provider configuration and health status.
  * All secrets come from environment variables only.
  * NO MOCK DATA - All results come from official providers.
@@ -13,18 +13,7 @@ import {
   ProviderHealthStatus,
 } from './provider.types';
 
-export interface ProviderConfig {
-  type: ProviderType;
-  name: string;
-  environment: ProviderEnvironment;
-  configured: boolean;
-  apiKey?: string;
-  apiSecret?: string;
-  baseUrl?: string;
-  webhookSecret?: string;
-}
-
-interface ProviderLogEntry {
+export interface ProviderLogEntry {
   timestamp: string;
   provider: ProviderType;
   operation: string;
@@ -45,7 +34,7 @@ class ProviderRegistry {
       case ProviderType.HOTELS:
         return !!(process.env.HOTELBEDS_API_KEY && process.env.HOTELBEDS_SECRET);
       case ProviderType.PAYMENTS:
-        return !!(process.env.TAP_SECRET_KEY && process.env.TAP_PUBLIC_KEY && process.env.TAP_WEBHOOK_SECRET);
+        return !!(process.env.TAP_SECRET_KEY && process.env.TAP_PUBLIC_KEY);
       case ProviderType.PACKAGES:
         return !!(process.env.PACKAGES_API_KEY && process.env.PACKAGES_API_BASE_URL);
       case ProviderType.CHALETS:
@@ -64,9 +53,9 @@ class ProviderRegistry {
       case ProviderType.HOTELS:
         return process.env.HOTELBEDS_ENV === 'production' ? ProviderEnvironment.PRODUCTION : ProviderEnvironment.SANDBOX;
       case ProviderType.PAYMENTS:
-        return process.env.TAP_ENV === 'production' ? ProviderEnvironment.PRODUCTION : ProviderEnvironment.SANDBOX;
+        return process.env.TAP_ENVIRONMENT === 'production' ? ProviderEnvironment.PRODUCTION : ProviderEnvironment.SANDBOX;
       default:
-        return ProviderEnvironment.PRODUCTION;
+        return ProviderEnvironment.SANDBOX;
     }
   }
 
@@ -104,7 +93,7 @@ class ProviderRegistry {
     }
   }
 
-  getLogs(options?: { provider?: string; status?: string; limit?: number }): ProviderLogEntry[] {
+  getLogs(options?: { provider?: ProviderType; status?: string; limit?: number }): ProviderLogEntry[] {
     let filtered = this.logs;
     if (options?.provider) {
       filtered = filtered.filter(l => l.provider === options.provider);
