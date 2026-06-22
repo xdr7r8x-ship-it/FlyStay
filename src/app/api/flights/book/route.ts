@@ -1,26 +1,26 @@
 /**
- * Flights Search API
- * POST /api/flights/search
+ * Flights Book API
+ * POST /api/flights/book
  * 
  * FAIL-CLOSED: Returns 503 if Amadeus keys not configured.
- * NO MOCK DATA - Returns real results from Amadeus API only.
+ * NO FAKE BOOKING - Creates real booking via Amadeus API only.
+ * Requires bookingId and confirmationCode from real provider response.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { flightsProvider } from '@/lib/providers';
 
-const searchSchema = z.object({
-  originLocationCode: z.string().length(3),
-  destinationLocationCode: z.string().length(3),
-  departureDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  returnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  adults: z.number().min(1).max(9),
-  children: z.number().min(0).max(9).optional(),
-  infants: z.number().min(0).max(4).optional(),
-  travelClass: z.enum(['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST']).optional(),
-  nonStop: z.boolean().optional(),
-  maxPrice: z.number().optional(),
-  currencyCode: z.string().length(3).default('SAR'),
+const bookSchema = z.object({
+  offerId: z.string(),
+  travelers: z.array(z.object({
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    email: z.string().email(),
+    phone: z.string().min(8),
+  })).min(1),
+  contactEmail: z.string().email(),
+  contactPhone: z.string().min(8),
 });
 
 export async function POST(request: NextRequest) {
@@ -34,15 +34,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validatedInput = searchSchema.parse(body);
-    const result = await flightsProvider.search(validatedInput);
+    const validatedInput = bookSchema.parse(body);
+    const result = await flightsProvider.createBooking(validatedInput);
 
     if (!result.success) {
-      const status = result.error?.code === 'SERVICE_NOT_CONFIGURED' ? 503 : 400;
+      const status = result.error?.code === 'NOT_IMPLEMENTED' ? 501 : 400;
       return NextResponse.json({ error: result.error }, { status });
     }
 
-    return NextResponse.json({ data: result.data, count: result.data?.length || 0 });
+    // Validate real provider response
+    if (!result.data?.bookingId || !result.data?.confirmationCode) {
+      return NextResponse.json(
+        { error: { code: 'INVALID_PROVIDER_RESPONSE', message: 'استجابة غير صالحة من مزود الخدمة' } },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ data: result.data });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -50,7 +58,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error('Flights search error:', error);
+    console.error('Flights book error:', error);
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'خطأ في الخادم' } },
       { status: 500 }

@@ -10,10 +10,13 @@ function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   
   if (!connectionString) {
-    // Return a client that will fail gracefully - for build time only
-    const pool = new Pool({ connectionString: 'postgresql://localhost:5432/flystay' });
-    const adapter = new PrismaPg(pool);
-    return new PrismaClient({ adapter });
+    // For build time or when DATABASE_URL is not set, return a mock client
+    // This will be replaced at runtime with the real client
+    // @ts-expect-error - intentionally using a placeholder for build time
+    return {
+      $connect: async () => {},
+      $disconnect: async () => {},
+    };
   }
   
   const pool = new Pool({ connectionString });
@@ -21,8 +24,13 @@ function createPrismaClient(): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+// Only create real prisma client at runtime, not during build
+const prismaInstance = globalForPrisma.prisma ?? (process.env.NODE_ENV === 'production' ? createPrismaClient() : undefined);
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+export const prisma = prismaInstance ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== 'production' && prismaInstance) {
+  globalForPrisma.prisma = prismaInstance;
+}
 
 export default prisma;

@@ -1,32 +1,30 @@
 /**
- * Flights Search API
- * POST /api/flights/search
+ * Hotels Search API
+ * POST /api/hotels/search
  * 
- * FAIL-CLOSED: Returns 503 if Amadeus keys not configured.
- * NO MOCK DATA - Returns real results from Amadeus API only.
+ * FAIL-CLOSED: Returns 503 if Hotelbeds keys not configured.
+ * NO MOCK DATA - Returns real results from Hotelbeds API only.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { flightsProvider } from '@/lib/providers';
+import { hotelsProvider } from '@/lib/providers';
 
 const searchSchema = z.object({
-  originLocationCode: z.string().length(3),
-  destinationLocationCode: z.string().length(3),
-  departureDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  returnDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  destination: z.string().min(1),
+  checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  rooms: z.number().min(1).max(9),
   adults: z.number().min(1).max(9),
   children: z.number().min(0).max(9).optional(),
-  infants: z.number().min(0).max(4).optional(),
-  travelClass: z.enum(['ECONOMY', 'PREMIUM_ECONOMY', 'BUSINESS', 'FIRST']).optional(),
-  nonStop: z.boolean().optional(),
+  nationality: z.string().length(2).optional(),
+  currency: z.string().length(3).default('SAR'),
   maxPrice: z.number().optional(),
-  currencyCode: z.string().length(3).default('SAR'),
 });
 
 export async function POST(request: NextRequest) {
   try {
     // FAIL-CLOSED: Check provider configuration first
-    if (!flightsProvider.isConfigured()) {
+    if (!hotelsProvider.isConfigured()) {
       return NextResponse.json(
         { error: { code: 'SERVICE_NOT_CONFIGURED', message: 'الخدمة غير متاحة حاليًا، سيتم تفعيلها بعد اعتماد مزود الحجز الرسمي.' } },
         { status: 503 }
@@ -35,11 +33,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const validatedInput = searchSchema.parse(body);
-    const result = await flightsProvider.search(validatedInput);
+    const result = await hotelsProvider.search(validatedInput);
 
     if (!result.success) {
-      const status = result.error?.code === 'SERVICE_NOT_CONFIGURED' ? 503 : 400;
-      return NextResponse.json({ error: result.error }, { status });
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
     return NextResponse.json({ data: result.data, count: result.data?.length || 0 });
@@ -50,7 +47,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error('Flights search error:', error);
+    console.error('Hotels search error:', error);
     return NextResponse.json(
       { error: { code: 'INTERNAL_ERROR', message: 'خطأ في الخادم' } },
       { status: 500 }
