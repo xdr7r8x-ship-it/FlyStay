@@ -9,14 +9,16 @@ datasource db {
 
 enum Role {
   USER
+  SUPPORT
   ADMIN
 }
 
 enum ServiceType {
-  HOTEL
-  CHALET
   FLIGHT
+  HOTEL
   PACKAGE
+  CHALET
+  RESTHOUSE
 }
 
 enum OrderStatus {
@@ -27,6 +29,47 @@ enum OrderStatus {
   CONFIRMED_MANUALLY
   CANCELLED
   CLOSED
+}
+
+enum ProviderType {
+  FLIGHTS
+  HOTELS
+  PACKAGES
+  CHALETS
+  RESTHOUSES
+  PAYMENTS
+  INTERNAL
+}
+
+enum ProviderEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum BookingStatus {
+  REQUESTED
+  QUOTED
+  PAYMENT_PENDING
+  CONFIRMED
+  FAILED
+  CANCELLED
+  REFUND_REQUIRED
+  CLOSED
+}
+
+enum ProviderActionStatus {
+  SUCCESS
+  ERROR
+  PENDING
 }
 
 model User {
@@ -41,6 +84,10 @@ model User {
   
   orders        Order[]
   notifications Notification[]
+  bookings      Booking[]
+  payments      Payment[]
+  auditLogs    AuditLog[]      @relation("AuditActor")
+  providerLogs ProviderLog[]
   
   @@map("users")
 }
@@ -51,6 +98,15 @@ model Order {
   userId      String      @map("user_id")
   serviceType ServiceType @map("service_type")
   details     Json
+  paymentStatus    PaymentStatus @default(CREATED) @map("payment_status")
+  bookingStatus    BookingStatus @default(REQUESTED) @map("booking_status")
+  finalAmount      Decimal?      @map("final_amount") @db.Decimal(12, 2)
+  currency         String        @default("SAR")
+  providerType     String?       @map("provider_type")
+  providerName     String?       @map("provider_name")
+  providerBookingId String?      @map("provider_booking_id")
+  confirmationCode String?       @map("confirmation_code")
+  idempotencyKey   String?       @unique @map("idempotency_key")
   status      OrderStatus @default(NEW)
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
@@ -58,6 +114,9 @@ model Order {
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   statusHistory OrderStatusHistory[]
   adminNotes    AdminNote[]
+  bookings      Booking[]
+  payments      Payment[]
+  providerLogs  ProviderLog[]
   
   @@map("orders")
 }
@@ -94,10 +153,169 @@ model AdminNote {
   adminId   String   @map("admin_id")
   note      String
   createdAt DateTime @default(now()) @map("created_at")
-  
+
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
+
   @@map("admin_notes")
+}
+
+model Booking {
+  id                  String        @id @default(cuid())
+  orderId             String        @map("order_id")
+  userId              String        @map("user_id")
+  providerType        ProviderType  @map("provider_type")
+  providerName        String        @map("provider_name")
+  providerBookingId   String?       @map("provider_booking_id")
+  confirmationCode    String?       @map("confirmation_code")
+  status              BookingStatus @default(REQUESTED)
+  amount              Decimal       @db.Decimal(12, 2)
+  currency            String        @default("SAR")
+  rawProviderResponse Json?         @map("raw_provider_response")
+  idempotencyKey     String        @unique @map("idempotency_key")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bookings")
+}
+
+model Payment {
+  id                  String        @id @default(cuid())
+  orderId             String        @map("order_id")
+  userId              String        @map("user_id")
+  providerName        String        @default("Tap") @map("provider_name")
+  providerPaymentId   String?       @map("provider_payment_id")
+  checkoutUrl         String?       @map("checkout_url")
+  amount              Decimal       @db.Decimal(12, 2)
+  currency            String        @default("SAR")
+  status              PaymentStatus @default(CREATED)
+  rawProviderResponse Json?         @map("raw_provider_response")
+  idempotencyKey     String        @unique @map("idempotency_key")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model ProviderCredential {
+  id           String             @id @default(cuid())
+  providerType ProviderType       @map("provider_type")
+  providerName String             @map("provider_name")
+  enabled      Boolean            @default(true)
+  environment  ProviderEnvironment @default(PRODUCTION)
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  @@map("provider_credentials")
+}
+
+model ProviderLog {
+  id             String               @id @default(cuid())
+  userId         String?              @map("user_id")
+  orderId        String?              @map("order_id")
+  providerType   ProviderType         @map("provider_type")
+  providerName   String              @map("provider_name")
+  action         String
+  status         ProviderActionStatus
+  requestId      String?             @map("request_id")
+  idempotencyKey String?             @map("idempotency_key")
+  errorCode      String?             @map("error_code")
+  errorMessage   String?             @map("error_message")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  user  User?  @relation(fields: [userId], references: [id])
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@map("provider_logs")
+  @@index([userId])
+  @@index([orderId])
+  @@index([idempotencyKey])
+}
+
+model WebhookEvent {
+  id                 String   @id @default(cuid())
+  providerName       String   @map("provider_name")
+  eventType          String   @map("event_type")
+  eventId            String?  @unique @map("event_id")
+  signatureVerified  Boolean  @default(false) @map("signature_verified")
+  processed          Boolean  @default(false)
+  rawPayload         Json?    @map("raw_payload")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("webhook_events")
+  @@index([providerName, eventType])
+  @@index([processed])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  @map("actor_id")
+  actorRole  String?  @map("actor_role")
+  action     String
+  entityType String  @map("entity_type")
+  entityId   String? @map("entity_id")
+  ipAddress  String? @map("ip_address")
+  userAgent  String? @map("user_agent")
+  details    Json?   @map("details")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model InventoryItem {
+  id           String      @id @default(cuid())
+  title        String
+  serviceType  ServiceType @map("service_type")
+  city         String
+  description  String?     @db.Text
+  images       Json?     @map("images")
+  amenities    Json?     @map("amenities")
+  capacity     Int
+  bedrooms     Int         @default(1)
+  bathrooms    Int         @default(1)
+  ownerName    String?     @map("owner_name")
+  ownerPhone   String?     @map("owner_phone")
+  basePrice    Decimal     @db.Decimal(12, 2)
+  serviceFee   Decimal     @default(0) @map("service_fee") @db.Decimal(12, 2)
+  currency     String      @default("SAR")
+  terms        String?     @db.Text
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  availabilities InventoryAvailability[]
+
+  @@map("inventory_items")
+  @@index([serviceType, active])
+  @@index([city])
+}
+
+model InventoryAvailability {
+  id              String        @id @default(cuid())
+  inventoryItemId String        @map("inventory_item_id")
+  date            DateTime      @db.Date
+  availableUnits  Int           @default(1) @map("available_units")
+  priceOverride   Decimal?      @map("price_override") @db.Decimal(12, 2)
+  blocked         Boolean       @default(false)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  item InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@unique([inventoryItemId, date])
+  @@map("inventory_availability")
+  @@index([inventoryItemId, date])
 }
 
 model Offer {
@@ -108,6 +326,6 @@ model Offer {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  
+
   @@map("offers")
 }
