@@ -4,18 +4,30 @@ on:
   workflow_dispatch:
     inputs:
       skip_seed:
-        description: 'Skip database seed'
+        description: 'Skip database seed step'
         required: false
         default: 'false'
-        type: boolean
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  contents: read
 
 jobs:
-  deploy:
-    name: Deploy Database Schema & Seed
+  deploy-db:
+    name: Run Prisma migrate and seed
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      NODE_ENV: production
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -24,21 +36,27 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL secret is not configured."
+            exit 1
+          fi
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Prisma Client
+      - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Deploy migrations
+      - name: Deploy Prisma migrations
         run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
 
       - name: Seed database
-        if: ${{ inputs.skip_seed != true }}
+        if: ${{ github.event.inputs.skip_seed != 'true' }}
         run: npm run db:seed
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+
+      - name: Seed skipped
+        if: ${{ github.event.inputs.skip_seed == 'true' }}
+        run: echo "Seed step skipped by workflow input."
