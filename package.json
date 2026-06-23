@@ -12,11 +12,10 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "db:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/seed.ts",
+    "db:seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\",\\\"target\\\":\\\"ES2020\\\"}\" scripts/seed.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@esbuild/linux-x64": "^0.28.1",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.3",
@@ -46,6 +45,6 @@
     "vercel": "^54.14.5"
   },
   "prisma": {
-    "seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/seed.ts"
+    "seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\",\\\"target\\\":\\\"ES2020\\\"}\" scripts/seed.ts"
   }
 }

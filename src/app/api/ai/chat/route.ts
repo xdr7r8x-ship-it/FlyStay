@@ -14,7 +14,7 @@ const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 const AI_TEMPERATURE = parseFloat(process.env.AI_TEMPERATURE || '0.2');
 const AI_MAX_TOKENS = parseInt(process.env.AI_MAX_TOKENS || '500', 10);
 
-// Rate limiting - simple in-memory (use Redis in production)
+// Rate limiting - local process cache (use Redis in production)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT = 10; // requests per minute
 const RATE_WINDOW = 60000; // 1 minute

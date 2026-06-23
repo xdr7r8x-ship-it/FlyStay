@@ -95,7 +95,7 @@ export default function ServicesPage() {
                     href={`/search?type=${service.id === 1 ? 'flights' : service.id === 2 ? 'hotels' : service.id === 3 ? 'packages' : 'offers'}`}
                     className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-charcoal text-white rounded-xl font-cairo font-medium text-sm hover:opacity-90 transition-opacity"
                   >
-                    احجز الآن
+                    ابدأ التخطيط
                     <ArrowLeft className="w-4 h-4" />
                   </Link>
                 </div>

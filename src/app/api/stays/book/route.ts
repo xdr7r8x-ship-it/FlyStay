@@ -3,15 +3,12 @@ import { z } from 'zod';
 import { internalInventoryProvider } from '@/lib/providers';
 
 const bookSchema = z.object({
-  itemId: z.string(),
+  inventoryItemId: z.string().min(1),
+  orderId: z.string().min(1),
+  userId: z.string().min(1),
   checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   guests: z.number().min(1),
-  leadGuest: z.object({
-    name: z.string().min(1),
-    email: z.string().email(),
-    phone: z.string().min(8),
-  }),
 });
 
 export async function POST(request: NextRequest) {
@@ -25,7 +22,8 @@ export async function POST(request: NextRequest) {
   try {
     bookSchema.parse(await request.json());
     const result = await internalInventoryProvider.createBooking();
-    return NextResponse.json({ error: result.error }, { status: 503 });
+    if (!result.success) return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json({ data: result.data });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -33,9 +31,6 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    return NextResponse.json(
-      { error: { code: 'INTERNAL_ERROR', message: 'خطأ في الخادم' } },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'خطأ في الخادم' } }, { status: 500 });
   }
 }
