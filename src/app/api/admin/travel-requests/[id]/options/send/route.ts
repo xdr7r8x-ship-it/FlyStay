@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRoles } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { writeAuditLog } from '@/lib/admin-audit';
+import { createSystemMessage } from '@/lib/travel-request-messages';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await requireRoles(request, ['ADMIN']);
@@ -56,6 +57,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         newStatus: 'OPTIONS_SENT',
       },
     });
+
+    // Create system message for user
+    await createSystemMessage(
+      params.id,
+      'تم تجهيز خيارات أولية للمراجعة. اختيارك لأي خيار لا يعني إتمام الحجز.',
+      'USER',
+      'OPTION'
+    );
 
     return NextResponse.json({
       success: true,

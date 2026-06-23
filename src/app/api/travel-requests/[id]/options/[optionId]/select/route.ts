@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createSystemMessage } from '@/lib/travel-request-messages';
+import { writeAuditLog } from '@/lib/admin-audit';
 
 function unauthorized() {
   return NextResponse.json(
@@ -82,6 +84,29 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       where: { id: params.id },
       data: {
         status: 'USER_APPROVED',
+      },
+    });
+
+    // Create system message for user
+    await createSystemMessage(
+      params.id,
+      'تم استلام اختيارك. سيقوم فريق FlyStay بمراجعة التفاصيل يدويًا قبل أي إجراء.',
+      'USER',
+      'OPTION'
+    );
+
+    await writeAuditLog({
+      request,
+      actorId: user.userId,
+      actorRole: user.role || 'USER',
+      action: 'TRAVEL_REQUEST_OPTION_SELECTED',
+      entityType: 'TRAVEL_REQUEST',
+      entityId: params.id,
+      details: {
+        requestId: params.id,
+        selectedOptionId: params.optionId,
+        requestStatus: updatedRequest.status,
+        optionStatus: updatedOption.status,
       },
     });
 

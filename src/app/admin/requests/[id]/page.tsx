@@ -3,8 +3,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, AlertCircle, Lock, Clock, MapPin, Users, Calendar, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, AlertCircle, Lock, Clock, MapPin, Users, Calendar, CheckCircle, MessageSquare, Send, Eye, EyeOff } from 'lucide-react';
 import Header from '@/components/layout/Header';
+
+interface Message {
+  id: string;
+  senderRole: string;
+  bodyAr: string;
+  messageType: string;
+  visibility: string;
+  createdAt: string;
+  sender?: {
+    name: string;
+    email: string;
+  };
+}
 
 interface TravelRequest {
   id: string;
@@ -96,6 +109,10 @@ export default function AdminRequestDetailPage() {
   const [updateStatus, setUpdateStatus] = useState<string>('');
   const [updateNotes, setUpdateNotes] = useState<string>('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messageText, setMessageText] = useState('');
+  const [messageInternal, setMessageInternal] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   const loadRequest = useCallback(async () => {
     setAuthState('loading');
@@ -132,7 +149,13 @@ export default function AdminRequestDetailPage() {
 
   useEffect(() => {
     loadRequest();
-  }, [loadRequest]);
+    
+    // Load messages
+    fetch('/api/admin/travel-requests/' + requestId + '/messages', { credentials: 'include' })
+      .then(r => r.ok && r.json())
+      .then(d => d && setMessages(d.data || []))
+      .catch(() => {});
+  }, [loadRequest, requestId]);
 
   const handleUpdate = async () => {
     if (authState !== 'authorized' || !request) return;
@@ -162,6 +185,39 @@ export default function AdminRequestDetailPage() {
       alert(err instanceof Error ? err.message : 'حدث خطأ');
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) return;
+    setIsSending(true);
+    
+    try {
+      const response = await fetch('/api/admin/travel-requests/' + requestId + '/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          bodyAr: messageText.trim(),
+          visibility: messageInternal ? 'INTERNAL' : 'USER',
+        }),
+      });
+      
+      if (!response.ok) throw new Error('فشل في إرسال الرسالة');
+      
+      setMessageText('');
+      setMessageInternal(false);
+      
+      // Reload messages
+      const msgsRes = await fetch('/api/admin/travel-requests/' + requestId + '/messages', { credentials: 'include' });
+      if (msgsRes.ok) {
+        const msgsData = await msgsRes.json();
+        setMessages(msgsData.data || []);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -387,6 +443,85 @@ export default function AdminRequestDetailPage() {
             >
               إدارة الخيارات
             </Link>
+          </div>
+
+          {/* Messages Section */}
+          <div className="mt-6 pt-6 border-t border-mist">
+            <div className="flex items-center gap-3 mb-4">
+              <MessageSquare className="w-5 h-5 text-champagne" />
+              <h3 className="font-cairo text-lg font-bold text-charcoal">مراسلات الطلب</h3>
+            </div>
+
+            {/* Message List */}
+            <div className="bg-white rounded-xl border border-mist divide-y divide-mist max-h-80 overflow-y-auto mb-4">
+              {messages.length === 0 ? (
+                <div className="p-6 text-center">
+                  <p className="font-cairo text-sm text-secondary">لا توجد رسائل بعد</p>
+                </div>
+              ) : (
+                messages.map((msg) => (
+                  <div key={msg.id} className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {msg.senderRole === 'SYSTEM' ? (
+                          <span className="px-2 py-1 bg-sand text-xs font-cairo rounded-full">نظام</span>
+                        ) : msg.senderRole === 'ADMIN' ? (
+                          <span className="px-2 py-1 bg-charcoal text-white text-xs font-cairo rounded-full">أدمن</span>
+                        ) : (
+                          <span className="px-2 py-1 bg-champagne/30 text-xs font-cairo rounded-full">مستخدم</span>
+                        )}
+                        {msg.visibility === 'INTERNAL' && (
+                          <span className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 text-xs font-cairo rounded-full">
+                            <EyeOff className="w-3 h-3" />
+                            داخلي فقط
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-cairo text-xs text-muted">
+                        {new Date(msg.createdAt).toLocaleDateString('ar-SA')}
+                      </span>
+                    </div>
+                    <p className="font-cairo text-sm text-charcoal">{msg.bodyAr}</p>
+                    {msg.sender && (
+                      <p className="font-cairo text-xs text-muted mt-1">
+                        {msg.sender.name || msg.sender.email}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Send Message Form */}
+            <div className="bg-white rounded-xl border border-mist p-4">
+              <textarea
+                id="messageText"
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                rows={2}
+                className="w-full px-4 py-2 border border-mist rounded-lg font-cairo resize-none mb-3"
+                placeholder="اكتب رسالة للمستخدم..."
+              />
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={messageInternal}
+                    onChange={(e) => setMessageInternal(e.target.checked)}
+                    className="w-4 h-4 accent-charcoal"
+                  />
+                  <span className="font-cairo text-sm text-secondary">رسالة داخلية فقط</span>
+                </label>
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!messageText.trim() || isSending}
+                  className="flex items-center gap-2 mr-auto px-4 py-2 bg-champagne text-charcoal rounded-lg font-cairo font-semibold disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                  {isSending ? 'جاري...' : 'إرسال'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

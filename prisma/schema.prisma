@@ -95,6 +95,7 @@ model User {
   providerLogs ProviderLog[]
   travelRequests TravelRequest[]
   quotes        Quote[]
+  travelRequestMessages TravelRequestMessage[]
 
   @@map("users")
 }
@@ -508,6 +509,7 @@ model TravelRequest {
   stayGuide   StayGuide?         @relation(fields: [stayGuideId], references: [id], onDelete: SetNull)
   quotes      Quote[]
   options     TravelRequestOption[]
+  messages    TravelRequestMessage[]
 
   @@map("travel_requests")
   @@index([userId])
@@ -534,6 +536,27 @@ model TravelRequestOption {
   @@index([requestId])
   @@index([status])
   @@index([requestId, status])
+}
+
+model TravelRequestMessage {
+  id           String   @id @default(cuid())
+  requestId    String   @map("request_id")
+  senderId     String?  @map("sender_id")
+  senderRole   String   @default("SYSTEM") @map("sender_role")
+  bodyAr       String   @map("body_ar")
+  visibility   String   @default("USER") @map("visibility")
+  messageType  String   @default("TEXT") @map("message_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  request TravelRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  sender  User?         @relation(fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@map("travel_request_messages")
+  @@index([requestId])
+  @@index([senderId])
+  @@index([visibility])
+  @@index([createdAt])
 }
 
 model ProviderStatus {
