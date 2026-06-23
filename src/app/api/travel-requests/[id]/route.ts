@@ -11,7 +11,7 @@ function unauthorized() {
 
 function forbidden() {
   return NextResponse.json(
-    { error: { code: 'FORBIDDEN', message: 'غير مصرح لك访问 هذا الطلب.' } },
+    { error: { code: 'FORBIDDEN', message: 'غير مصرح لك بعرض هذا الطلب.' } },
     { status: 403 },
   );
 }

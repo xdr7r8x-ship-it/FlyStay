@@ -47,11 +47,20 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json();
     const data: Record<string, unknown> = {};
     
-    if (ALLOWED_STATUS.includes(body.status)) data.status = body.status;
-    if (ALLOWED_PAYMENT_STATUS.includes(body.paymentStatus)) data.paymentStatus = body.paymentStatus;
-    if (ALLOWED_BOOKING_STATUS.includes(body.bookingStatus)) data.bookingStatus = body.bookingStatus;
-    if (typeof body.notes === 'string') data.notes = body.notes;
-    if (body.details && typeof body.details === 'object') data.details = body.details;
+    // Only allow status and notes updates - NO paymentStatus, bookingStatus, details, prices, or confirmations
+    if (ALLOWED_STATUS.includes(body.status)) {
+      data.status = body.status;
+    }
+    if (typeof body.notes === 'string') {
+      data.notes = body.notes;
+    }
+    // Explicitly reject any attempts to update paymentStatus, bookingStatus, or details
+    if (body.paymentStatus !== undefined || body.bookingStatus !== undefined || body.details !== undefined) {
+      return NextResponse.json(
+        { error: { code: 'FORBIDDEN', message: 'لا يمكن تحديث حالة الدفع أو الحجز أو التفاصيل.' } },
+        { status: 403 }
+      );
+    }
 
     const travelRequest = await prisma.travelRequest.update({
       where: { id: params.id },
@@ -68,8 +77,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       details: {
         referenceNumber: travelRequest.referenceNumber,
         status: travelRequest.status,
-        paymentStatus: travelRequest.paymentStatus,
-        bookingStatus: travelRequest.bookingStatus,
+        notesUpdated: typeof body.notes === 'string',
       },
     });
 
