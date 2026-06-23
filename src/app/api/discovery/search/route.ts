@@ -25,6 +25,11 @@ export async function GET(request: NextRequest) {
   const familyFriendly = boolParam(searchParams.get('familyFriendly'));
   const honeymoon = boolParam(searchParams.get('honeymoon'));
   const saudiOnly = boolParam(searchParams.get('saudiOnly'));
+  const limitParam = searchParams.get('limit');
+  const defaultLimit = 120;
+  const takeDest = limitParam ? Math.min(Number(limitParam), 120) : defaultLimit;
+  const takeTemplates = limitParam ? Math.min(Number(limitParam), 80) : 80;
+  const takeStays = limitParam ? Math.min(Number(limitParam), 80) : 80;
 
   try {
     const destWhere: Prisma.TravelDestinationWhereInput = { status: 'ACTIVE' };
@@ -89,17 +94,17 @@ export async function GET(request: NextRequest) {
       prisma.travelDestination.findMany({
         where: destWhere,
         orderBy: { cityAr: 'asc' },
-        take: 120,
+        take: takeDest,
       }),
       prisma.tripTemplate.findMany({
         where: templateWhere,
         orderBy: { titleAr: 'asc' },
-        take: 80,
+        take: takeTemplates,
       }),
       prisma.stayGuide.findMany({
         where: stayWhere,
         orderBy: { titleAr: 'asc' },
-        take: 80,
+        take: takeStays,
       }),
     ]);
 
