@@ -314,6 +314,18 @@ export default function MyRequestDetailPage() {
           </p>
         </div>
 
+        {/* Options Button - only show when OPTIONS_SENT or USER_APPROVED */}
+        {(request.status === 'OPTIONS_SENT' || request.status === 'USER_APPROVED') && (
+          <div className="mb-6">
+            <Link
+              href={'/my-requests/' + requestId + '/options'}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-champagne text-charcoal rounded-xl font-cairo font-semibold"
+            >
+              عرض الخيارات
+            </Link>
+          </div>
+        )}
+
         <div className="text-center">
           <Link href="/my-requests" className="font-cairo text-sm text-champagne hover:underline">
             العودة لطلباتي

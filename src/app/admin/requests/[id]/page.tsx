@@ -378,6 +378,16 @@ export default function AdminRequestDetailPage() {
               الحالة &#8220;مكتمل إداريًا&#8221; تعني أن المعاملة تمت إداريًا ولا تعني تأكيد الحجز.
             </p>
           </div>
+
+          {/* Options Management */}
+          <div className="mt-4 pt-4 border-t border-mist">
+            <Link
+              href={'/admin/requests/' + requestId + '/options'}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-charcoal text-white rounded-lg font-cairo text-sm"
+            >
+              إدارة الخيارات
+            </Link>
+          </div>
         </div>
 
         <div className="text-center">
