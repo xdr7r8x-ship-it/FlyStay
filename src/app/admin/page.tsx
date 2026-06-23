@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Package, Building2, FileText, Clock, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { MapPin, Package, Building2, FileText, Clock, CheckCircle, AlertCircle, ArrowLeft, Lock } from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface Stats {
@@ -21,6 +21,8 @@ interface QuickStat {
   color: string;
 }
 
+type AuthState = 'loading' | 'authorized' | 'unauthorized' | 'error';
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats>({
     destinations: 0,
@@ -30,29 +32,42 @@ export default function AdminDashboardPage() {
     newRequests: 0,
     reviewingRequests: 0,
   });
-  const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState<AuthState>('loading');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchStats() {
-      setLoading(true);
+      setAuthState('loading');
       setError(null);
       
       try {
-        // Fetch destinations count
-        const destResponse = await fetch('/api/admin/content/destinations?status=ACTIVE');
-        const destData = destResponse.ok ? await destResponse.json() : { data: [] };
+        const destResponse = await fetch('/api/admin/content/destinations?status=ACTIVE', {
+          credentials: 'include'
+        });
         
-        // Fetch templates count
-        const tempResponse = await fetch('/api/admin/content/templates?status=ACTIVE');
+        if (!destResponse.ok) {
+          if (destResponse.status === 401 || destResponse.status === 403) {
+            setAuthState('unauthorized');
+            return;
+          }
+          throw new Error('فشل في جلب البيانات');
+        }
+        
+        const destData = await destResponse.json();
+        
+        const tempResponse = await fetch('/api/admin/content/templates?status=ACTIVE', {
+          credentials: 'include'
+        });
         const tempData = tempResponse.ok ? await tempResponse.json() : { data: [] };
         
-        // Fetch stay guides count
-        const stayResponse = await fetch('/api/admin/content/stay-guides?status=ACTIVE');
+        const stayResponse = await fetch('/api/admin/content/stay-guides?status=ACTIVE', {
+          credentials: 'include'
+        });
         const stayData = stayResponse.ok ? await stayResponse.json() : { data: [] };
         
-        // Fetch requests counts
-        const reqResponse = await fetch('/api/admin/travel-requests');
+        const reqResponse = await fetch('/api/admin/travel-requests', {
+          credentials: 'include'
+        });
         const reqData = reqResponse.ok ? await reqResponse.json() : { data: [] };
         
         const requests = reqData.data || [];
@@ -67,11 +82,12 @@ export default function AdminDashboardPage() {
           newRequests,
           reviewingRequests,
         });
+        
+        setAuthState('authorized');
       } catch (err) {
-        setError('فشل في تحميل الإحصائيات');
+        setAuthState('error');
+        setError(err instanceof Error ? err.message : 'فشل في تحميل الإحصائيات');
         console.error('Stats error:', err);
-      } finally {
-        setLoading(false);
       }
     }
     
@@ -93,7 +109,7 @@ export default function AdminDashboardPage() {
     { href: '/admin/requests', label: 'إدارة الطلبات', icon: <Clock className="w-5 h-5" /> },
   ];
 
-  if (loading) {
+  if (authState === 'loading') {
     return (
       <main className="min-h-screen bg-ivory">
         <Header />
@@ -109,14 +125,38 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (error) {
+  if (authState === 'unauthorized') {
+    return (
+      <main className="min-h-screen bg-ivory">
+        <Header />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-2xl p-8 border border-mist text-center">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Lock className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="font-cairo text-2xl font-bold text-charcoal mb-4">غير مصرح لك بالدخول</h2>
+            <p className="font-cairo text-secondary mb-6">هذه الصفحة مخصصة للمسؤول فقط. يرجى تسجيل الدخول بحساب له صلاحية الأدمن.</p>
+            <Link href="/login" className="inline-flex items-center gap-2 px-6 py-3 bg-charcoal text-white rounded-xl font-cairo">
+              تسجيل الدخول
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (authState === 'error') {
     return (
       <main className="min-h-screen bg-ivory">
         <Header />
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="bg-white rounded-2xl p-8 border border-mist text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="font-cairo text-red-600">{error}</p>
+            <h2 className="font-cairo text-xl font-bold text-charcoal mb-2">خطأ في الخادم</h2>
+            <p className="font-cairo text-secondary mb-4">{error}</p>
+            <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-sand text-charcoal rounded-xl font-cairo">
+              العودة للرئيسية
+            </Link>
           </div>
         </div>
       </main>
@@ -127,7 +167,6 @@ export default function AdminDashboardPage() {
     <main className="min-h-screen bg-ivory pb-8">
       <Header />
       
-      {/* Page Header */}
       <div className="bg-charcoal text-white py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3 mb-2">
@@ -140,7 +179,6 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 -mt-6">
-        {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {quickStats.map((stat) => (
             <div key={stat.label} className="bg-white rounded-2xl p-5 border border-mist shadow-sm">
@@ -153,7 +191,6 @@ export default function AdminDashboardPage() {
           ))}
         </div>
 
-        {/* Request Alerts */}
         {(stats.newRequests > 0 || stats.reviewingRequests > 0) && (
           <div className="bg-champagne/10 rounded-2xl p-4 border border-champagne/30 mb-8">
             <div className="flex items-center gap-3">
@@ -178,7 +215,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Quick Links */}
         <div className="bg-white rounded-2xl border border-mist overflow-hidden">
           <div className="p-4 border-b border-mist">
             <h2 className="font-cairo font-bold text-charcoal">روابط سريعة</h2>
@@ -200,7 +236,6 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Info Section */}
         <div className="mt-8 p-4 bg-sand/50 rounded-2xl border border-mist">
           <div className="flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-champagne flex-shrink-0 mt-0.5" />

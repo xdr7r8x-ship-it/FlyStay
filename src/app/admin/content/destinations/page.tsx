@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Eye, ToggleLeft, ToggleRight, RefreshCw, MapPin, Filter } from 'lucide-react';
+import { ArrowLeft, ToggleLeft, ToggleRight, MapPin, Filter, Lock, AlertCircle } from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface Destination {
@@ -13,9 +13,9 @@ interface Destination {
   continentAr: string;
   budgetLevel: string;
   status: string;
-  shortSummaryAr?: string;
-  travelStyles: unknown[];
 }
+
+type AuthState = 'loading' | 'authorized' | 'unauthorized' | 'error';
 
 const BUDGET_LABELS: Record<string, string> = {
   ECONOMY: 'اقتصادية',
@@ -32,48 +32,113 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function DestinationsPage() {
   const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState<AuthState>('loading');
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async () => {
+    setAuthState('loading');
+    setError(null);
     try {
       const params = new URLSearchParams();
       if (filter) params.set('q', filter);
       if (statusFilter) params.set('status', statusFilter);
       
-      const response = await fetch(`/api/admin/content/destinations?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setDestinations(data.data || []);
+      const response = await fetch('/api/admin/content/destinations?' + params.toString(), {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setAuthState('unauthorized');
+          return;
+        }
+        throw new Error('فشل في جلب البيانات');
       }
-    } catch (error) {
-      console.error('Failed to load destinations:', error);
-    } finally {
-      setLoading(false);
+      
+      const data = await response.json();
+      setDestinations(data.data || []);
+      setAuthState('authorized');
+    } catch (err) {
+      setAuthState('error');
+      setError(err instanceof Error ? err.message : 'فشل في التحميل');
     }
-  };
+  }, [filter, statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+  }, [loadData]);
 
   const toggleStatus = async (dest: Destination) => {
+    if (authState !== 'authorized') return;
     const newStatus = dest.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
-      const response = await fetch(`/api/admin/content/destinations/${dest.id}`, {
+      const response = await fetch('/api/admin/content/destinations/' + dest.id, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
+        credentials: 'include'
       });
       if (response.ok) {
         loadData();
       }
-    } catch (error) {
-      console.error('Failed to update:', error);
+    } catch (err) {
+      console.error('Failed to update:', err);
     }
   };
+
+  if (authState === 'loading') {
+    return (
+      <main className="min-h-screen bg-ivory">
+        <Header />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-sand rounded w-1/4" />
+            <div className="h-64 bg-sand rounded-xl" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (authState === 'unauthorized') {
+    return (
+      <main className="min-h-screen bg-ivory">
+        <Header />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-2xl p-8 border border-mist text-center">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Lock className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="font-cairo text-2xl font-bold text-charcoal mb-4">غير مصرح لك بالدخول</h2>
+            <p className="font-cairo text-secondary mb-6">هذه الصفحة مخصصة للمسؤول فقط.</p>
+            <Link href="/login" className="inline-flex items-center gap-2 px-6 py-3 bg-charcoal text-white rounded-xl font-cairo">
+              تسجيل الدخول
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (authState === 'error') {
+    return (
+      <main className="min-h-screen bg-ivory">
+        <Header />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-2xl p-8 border border-mist text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="font-cairo text-xl font-bold text-charcoal mb-2">خطأ في الخادم</h2>
+            <p className="font-cairo text-secondary mb-4">{error}</p>
+            <button onClick={loadData} className="px-6 py-3 bg-sand text-charcoal rounded-xl font-cairo">
+              إعادة المحاولة
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-ivory pb-8">
@@ -93,7 +158,6 @@ export default function DestinationsPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 -mt-6">
-        {/* Filters */}
         <div className="bg-white rounded-2xl p-4 border border-mist mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
@@ -108,7 +172,7 @@ export default function DestinationsPage() {
             </div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); }}
               className="px-4 py-3 border border-mist rounded-xl font-cairo text-sm focus:outline-none focus:border-champagne"
             >
               <option value="">كل الحالات</option>
@@ -126,7 +190,6 @@ export default function DestinationsPage() {
           </div>
         </div>
 
-        {/* Table */}
         <div className="bg-white rounded-2xl border border-mist overflow-hidden">
           <div className="grid grid-cols-[1fr_100px_100px_120px_120px] border-b border-mist bg-sand px-4 py-3 font-cairo text-sm font-bold text-charcoal">
             <span>الوجهة</span>
@@ -136,12 +199,7 @@ export default function DestinationsPage() {
             <span>إجراءات</span>
           </div>
           
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="w-12 h-12 border-4 border-champagne border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="font-cairo text-secondary">جاري التحميل...</p>
-            </div>
-          ) : destinations.length === 0 ? (
+          {destinations.length === 0 ? (
             <div className="p-8 text-center">
               <MapPin className="w-12 h-12 text-muted mx-auto mb-4" />
               <p className="font-cairo text-secondary">لا توجد وجهات</p>
@@ -178,7 +236,6 @@ export default function DestinationsPage() {
           )}
         </div>
 
-        {/* Back Link */}
         <div className="mt-6 text-center">
           <Link href="/admin" className="font-cairo text-sm text-champagne hover:underline">
             العودة للوحة التحكم
