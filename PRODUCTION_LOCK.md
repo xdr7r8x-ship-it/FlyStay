@@ -51,11 +51,21 @@
 
 ## Last Verified
 
-- **Date:** 2026-06-23 02:00 UTC
-- **Commit:** c7d2fe4
+- **Date:** 2026-06-23 02:30 UTC
+- **Commit:** d9f7b6d
 - **Tag:** v1.0-production-ready
 - **Build:** ✅ Passing
-- **Lint:** ✅ Passing
+- **Lint:** ✅ Passing (warnings only)
+
+## Homepage Features (v2)
+
+- Hero with smart search
+- Quick filters (family, honeymoon, economy, luxury, Saudi, Europe, Asia, nature)
+- Featured destinations from database (8 cards)
+- How It Works section
+- Travel Styles section
+- Trust & Safety section
+- Final CTAs (no fake booking)
 
 ## GitHub Actions
 
