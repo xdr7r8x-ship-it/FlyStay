@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createUserMessage, getUserMessages } from '@/lib/travel-request-messages';
+import { writeAuditLog } from '@/lib/admin-audit';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUserFromRequest(request);
@@ -86,6 +87,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       body.bodyAr.trim(),
       'USER'
     );
+
+    await writeAuditLog({
+      request,
+      actorId: user.userId,
+      actorRole: user.role || 'USER',
+      action: 'TRAVEL_REQUEST_USER_MESSAGE_CREATED',
+      entityType: 'TRAVEL_REQUEST_MESSAGE',
+      entityId: message.id,
+      details: {
+        requestId: params.id,
+        visibility: 'USER',
+        messageType: message.messageType,
+      },
+    });
 
     return NextResponse.json({ success: true, data: message });
   } catch (error) {
