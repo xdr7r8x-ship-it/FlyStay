@@ -507,12 +507,33 @@ model TravelRequest {
   template    TripTemplate?      @relation(fields: [templateId], references: [id], onDelete: SetNull)
   stayGuide   StayGuide?         @relation(fields: [stayGuideId], references: [id], onDelete: SetNull)
   quotes      Quote[]
+  options     TravelRequestOption[]
 
   @@map("travel_requests")
   @@index([userId])
   @@index([status])
   @@index([referenceNumber])
   @@index([stayGuideId])
+}
+
+model TravelRequestOption {
+  id             String   @id @default(cuid())
+  requestId      String   @map("request_id")
+  titleAr        String   @map("title_ar")
+  descriptionAr  String   @map("description_ar")
+  optionType     String   @default("SUGGESTION") @map("option_type")
+  priceHintAr    String?  @map("price_hint_ar")
+  notes          String?
+  status         String   @default("DRAFT")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  request TravelRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("travel_request_options")
+  @@index([requestId])
+  @@index([status])
+  @@index([requestId, status])
 }
 
 model ProviderStatus {
