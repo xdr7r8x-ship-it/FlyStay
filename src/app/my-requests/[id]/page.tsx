@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, RefreshCw, MessageSquare, Send } from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface TravelRequest {
@@ -40,6 +40,14 @@ interface TravelRequest {
     cityAr: string;
     type: string;
   } | null;
+}
+
+interface Message {
+  id: string;
+  senderRole: string;
+  bodyAr: string;
+  messageType: string;
+  createdAt: string;
 }
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'forbidden' | 'error';
@@ -85,6 +93,9 @@ export default function MyRequestDetailPage() {
   const requestId = params.id as string;
 
   const [request, setRequest] = useState<TravelRequest | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messageText, setMessageText] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [error, setError] = useState<string | null>(null);
 
@@ -128,7 +139,42 @@ export default function MyRequestDetailPage() {
 
   useEffect(() => {
     loadRequest();
-  }, [loadRequest]);
+    
+    // Load messages
+    fetch('/api/travel-requests/' + requestId + '/messages', { credentials: 'include' })
+      .then(r => r.ok && r.json())
+      .then(d => d && setMessages(d.data || []))
+      .catch(() => {});
+  }, [loadRequest, requestId]);
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) return;
+    setIsSending(true);
+    
+    try {
+      const response = await fetch('/api/travel-requests/' + requestId + '/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bodyAr: messageText.trim() }),
+      });
+      
+      if (!response.ok) throw new Error('فشل في إرسال الرسالة');
+      
+      setMessageText('');
+      
+      // Reload messages
+      const msgsRes = await fetch('/api/travel-requests/' + requestId + '/messages', { credentials: 'include' });
+      if (msgsRes.ok) {
+        const msgsData = await msgsRes.json();
+        setMessages(msgsData.data || []);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -302,6 +348,52 @@ export default function MyRequestDetailPage() {
                 {request.notes || 'لا توجد ملاحظات'}
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Messages Section */}
+        <div className="bg-white rounded-xl border border-mist p-4 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <MessageSquare className="w-5 h-5 text-champagne" />
+            <h3 className="font-cairo text-lg font-bold text-charcoal">مراسلات الطلب</h3>
+          </div>
+          
+          <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
+            {messages.length === 0 ? (
+              <p className="font-cairo text-sm text-secondary text-center py-4">لا توجد رسائل</p>
+            ) : (
+              messages.map((msg) => (
+                <div key={msg.id} className={`p-3 rounded-lg ${msg.senderRole === 'SYSTEM' ? 'bg-sand/50' : msg.senderRole === 'ADMIN' ? 'bg-champagne/10 mr-4' : 'bg-white border border-mist ml-4'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`font-cairo text-xs font-semibold ${msg.senderRole === 'SYSTEM' ? 'text-secondary' : msg.senderRole === 'ADMIN' ? 'text-charcoal' : 'text-champagne'}`}>
+                      {msg.senderRole === 'SYSTEM' ? 'نظام' : msg.senderRole === 'ADMIN' ? 'فريق FlyStay' : 'أنت'}
+                    </span>
+                    <span className="font-cairo text-xs text-muted">
+                      {new Date(msg.createdAt).toLocaleDateString('ar-SA')}
+                    </span>
+                  </div>
+                  <p className="font-cairo text-sm text-charcoal">{msg.bodyAr}</p>
+                </div>
+              ))
+            )}
+          </div>
+          
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+              placeholder="اكتب رسالة..."
+              className="flex-1 px-4 py-2 border border-mist rounded-lg font-cairo text-sm"
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!messageText.trim() || isSending}
+              className="px-4 py-2 bg-champagne text-charcoal rounded-lg font-cairo font-semibold disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
         </div>
 

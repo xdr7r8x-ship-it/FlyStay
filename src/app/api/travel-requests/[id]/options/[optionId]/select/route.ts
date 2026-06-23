@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createSystemMessage } from '@/lib/travel-request-messages';
 
 function unauthorized() {
   return NextResponse.json(
@@ -84,6 +85,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         status: 'USER_APPROVED',
       },
     });
+
+    // Create system message for user
+    await createSystemMessage(
+      params.id,
+      'تم استلام اختيارك. سيقوم فريق FlyStay بمراجعة التفاصيل يدويًا قبل أي إجراء.',
+      'USER',
+      'OPTION'
+    );
 
     return NextResponse.json({
       success: true,
