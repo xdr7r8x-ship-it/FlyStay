@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ArrowLeft, Bell, CheckCircle, AlertCircle, Lock, Search, Check, X } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Bell, CheckCircle, AlertCircle, Lock, Search, Check, Eye } from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface Notification {
@@ -10,7 +10,7 @@ interface Notification {
   type: string;
   title: string;
   message: string;
-  isRead: boolean;
+  read: boolean;
   createdAt: string;
   userId?: string;
   userName?: string;
@@ -21,6 +21,7 @@ type AuthState = 'loading' | 'authorized' | 'unauthorized' | 'error';
 export default function AdminNotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
@@ -57,9 +58,47 @@ export default function AdminNotificationsPage() {
     fetchNotifications();
   }, []);
 
+  const markAsRead = async (notificationId: string) => {
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/admin/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => 
+          n.id === notificationId ? { ...n, read: true } : n
+        ));
+      }
+    } catch (err) {
+      console.error('Failed to mark as read:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    setActionLoading(true);
+    try {
+      const response = await fetch('/api/admin/notifications/read-all', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      }
+    } catch (err) {
+      console.error('Failed to mark all as read:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
   const filteredNotifications = notifications.filter(n => {
-    if (filter === 'unread') return !n.isRead;
-    if (filter === 'read') return n.isRead;
+    if (filter === 'unread') return !n.read;
+    if (filter === 'read') return n.read;
     return true;
   });
 
@@ -148,14 +187,28 @@ export default function AdminNotificationsPage() {
       
       <div className="bg-charcoal text-white py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <Link href="/admin" className="text-champagne hover:text-champagne/80">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <span className="font-cairo text-champagne text-sm">لوحة التحكم</span>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Link href="/admin" className="text-champagne hover:text-champagne/80">
+                  <ArrowLeft className="w-5 h-5" />
+                </Link>
+                <span className="font-cairo text-champagne text-sm">لوحة التحكم</span>
+              </div>
+              <h1 className="font-cairo text-3xl font-bold">الإشعارات</h1>
+              <p className="font-cairo text-white/70 mt-1">عرض إشعارات النظام والمستخدمين</p>
+            </div>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllAsRead}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-champagne text-charcoal rounded-xl font-cairo text-sm font-semibold hover:bg-champagne/90 disabled:opacity-50 flex items-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                قراءة الكل ({unreadCount})
+              </button>
+            )}
           </div>
-          <h1 className="font-cairo text-3xl font-bold">الإشعارات</h1>
-          <p className="font-cairo text-white/70 mt-1">عرض إشعارات النظام والمستخدمين</p>
         </div>
       </div>
 
@@ -206,20 +259,20 @@ export default function AdminNotificationsPage() {
               {filteredNotifications.map((notification) => (
                 <div 
                   key={notification.id} 
-                  className={`p-4 transition-colors ${!notification.isRead ? 'bg-champagne/5' : ''}`}
+                  className={`p-4 transition-colors ${!notification.read ? 'bg-champagne/5' : ''}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        !notification.isRead ? 'bg-champagne/20' : 'bg-sand'
+                        !notification.read ? 'bg-champagne/20' : 'bg-sand'
                       }`}>
-                        <Bell className={`w-5 h-5 ${!notification.isRead ? 'text-champagne' : 'text-charcoal/40'}`} />
+                        <Bell className={`w-5 h-5 ${!notification.read ? 'text-champagne' : 'text-charcoal/40'}`} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-cairo font-semibold text-charcoal">{notification.title}</p>
                           {getTypeBadge(notification.type)}
-                          {!notification.isRead && (
+                          {!notification.read && (
                             <span className="w-2 h-2 bg-champagne rounded-full" />
                           )}
                         </div>
@@ -227,6 +280,16 @@ export default function AdminNotificationsPage() {
                         <p className="font-cairo text-xs text-secondary mt-2">{formatDate(notification.createdAt)}</p>
                       </div>
                     </div>
+                    {!notification.read && (
+                      <button
+                        onClick={() => markAsRead(notification.id)}
+                        disabled={actionLoading}
+                        className="p-2 hover:bg-sand rounded-lg transition-colors disabled:opacity-50"
+                        title="تحديد كمقروء"
+                      >
+                        <Check className="w-4 h-4 text-charcoal/60" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

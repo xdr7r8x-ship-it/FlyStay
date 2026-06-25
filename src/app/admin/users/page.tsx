@@ -202,7 +202,7 @@ export default function AdminUsersPage() {
           ) : (
             <div className="divide-y divide-mist">
               {filteredUsers.map((user) => (
-                <div key={user.id} className="p-4 hover:bg-sand/30 transition-colors">
+                <Link key={user.id} href={`/admin/users/${user.id}`} className="block p-4 hover:bg-sand/30 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-champagne/20 rounded-full flex items-center justify-center">
@@ -230,7 +230,7 @@ export default function AdminUsersPage() {
                       <ArrowRight className="w-4 h-4 text-secondary" />
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
