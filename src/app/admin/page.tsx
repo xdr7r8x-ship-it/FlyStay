@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Package, Building2, FileText, Clock, CheckCircle, AlertCircle, ArrowLeft, Lock } from 'lucide-react';
+import { MapPin, Package, Building2, FileText, Clock, CheckCircle, AlertCircle, ArrowLeft, Lock, Users, Bell, Shield, MessageSquare } from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface Stats {
@@ -107,6 +107,10 @@ export default function AdminDashboardPage() {
     { href: '/admin/content/templates', label: 'أفكار الرحلات', icon: <Package className="w-5 h-5" /> },
     { href: '/admin/content/stay-guides', label: 'أدلة الإقامة', icon: <Building2 className="w-5 h-5" /> },
     { href: '/admin/requests', label: 'إدارة الطلبات', icon: <Clock className="w-5 h-5" /> },
+    { href: '/admin/users', label: 'إدارة الأعضاء', icon: <Users className="w-5 h-5" /> },
+    { href: '/admin/support', label: 'الدعم والمتابعة', icon: <MessageSquare className="w-5 h-5" /> },
+    { href: '/admin/audit-logs', label: 'سجل النشاط', icon: <Shield className="w-5 h-5" /> },
+    { href: '/admin/notifications', label: 'الإشعارات', icon: <Bell className="w-5 h-5" /> },
   ];
 
   if (authState === 'loading') {
