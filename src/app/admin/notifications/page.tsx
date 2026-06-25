@@ -70,8 +70,8 @@ export default function AdminNotificationsPage() {
           n.id === notificationId ? { ...n, read: true } : n
         ));
       }
-    } catch (err) {
-      console.error('Failed to mark as read:', err);
+    } catch {
+      // Silent failure
     } finally {
       setActionLoading(false);
     }
@@ -87,8 +87,8 @@ export default function AdminNotificationsPage() {
       if (response.ok) {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       }
-    } catch (err) {
-      console.error('Failed to mark all as read:', err);
+    } catch {
+      // Silent failure
     } finally {
       setActionLoading(false);
     }

@@ -54,8 +54,8 @@ export default function TripIdeasPage() {
       const res = await fetch(`/api/discovery/search?${params}&serviceType=PACKAGE`);
       const data = await res.json();
       setTemplates(data.templates || []);
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
+      // Silent failure - templates will be empty
     } finally {
       setLoading(false);
     }

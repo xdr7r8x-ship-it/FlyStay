@@ -83,8 +83,8 @@ export default function DestinationsPage() {
       if (response.ok) {
         loadData();
       }
-    } catch (err) {
-      console.error('Failed to update:', err);
+    } catch {
+      // Silent failure
     }
   };
 

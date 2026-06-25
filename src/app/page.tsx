@@ -100,8 +100,8 @@ export default function HomePage() {
         if (data.destinations && data.destinations.length > 0) {
           setFeaturedDestinations(data.destinations.slice(0, 8));
         }
-      } catch (error) {
-        console.error('Failed to fetch destinations:', error);
+      } catch {
+        // Silent failure - featured destinations will be empty
       } finally {
         setIsLoading(false);
       }

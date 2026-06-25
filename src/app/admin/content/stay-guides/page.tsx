@@ -84,8 +84,8 @@ export default function StayGuidesPage() {
       if (response.ok) {
         loadData();
       }
-    } catch (err) {
-      console.error('Failed to update:', err);
+    } catch {
+      // Silent failure
     }
   };
 

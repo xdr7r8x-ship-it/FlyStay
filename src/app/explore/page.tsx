@@ -49,7 +49,9 @@ export default function ExplorePage() {
       if (data.destinations) setDestinations(data.destinations);
       if (data.templates) setTemplates(data.templates);
       if (data.stayGuides) setStayGuides(data.stayGuides);
-    } catch (error) { console.error('Discovery error:', error); }
+    } catch {
+      // Silent failure - data will remain empty
+    }
     finally { setLoading(false); }
   };
   useEffect(() => {

@@ -91,8 +91,8 @@ export default function AdminContentPage() {
       }
       
       await loadRows();
-    } catch (err) {
-      console.error('Update failed:', err);
+    } catch {
+      // Silent failure
     }
   };
 
@@ -116,8 +116,8 @@ export default function AdminContentPage() {
       }
       
       await loadRows();
-    } catch (err) {
-      console.error('Update failed:', err);
+    } catch {
+      // Silent failure
     }
   };
 

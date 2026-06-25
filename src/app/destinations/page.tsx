@@ -59,8 +59,8 @@ export default function DestinationsPage() {
       const res = await fetch(`/api/discovery/search?${params}`);
       const data = await res.json();
       setDestinations(data.destinations || []);
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
+      // Silent failure - destinations will be empty
     } finally {
       setLoading(false);
     }

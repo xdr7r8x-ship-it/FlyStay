@@ -87,7 +87,6 @@ export default function AdminDashboardPage() {
       } catch (err) {
         setAuthState('error');
         setError(err instanceof Error ? err.message : 'فشل في تحميل الإحصائيات');
-        console.error('Stats error:', err);
       }
     }
     

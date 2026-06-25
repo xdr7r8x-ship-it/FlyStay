@@ -54,8 +54,8 @@ export default function ChaletsPage() {
       const res = await fetch('/api/discovery/search');
       const data = await res.json();
       setGuides(data.stayGuides || []);
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
+      // Silent failure - guides will be empty
     } finally {
       setLoading(false);
     }

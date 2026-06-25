@@ -50,8 +50,8 @@ export default function PackagesPage() {
       const res = await fetch('/api/discovery/search?serviceType=PACKAGE');
       const data = await res.json();
       setTemplates(data.templates || []);
-    } catch (error) {
-      console.error('Error:', error);
+    } catch {
+      // Silent failure - templates will be empty
     } finally {
       setLoading(false);
     }

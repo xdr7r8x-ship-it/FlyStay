@@ -85,8 +85,8 @@ export default function SearchPage() {
       const data = await response.json();
       if (data.destinations) setDestinations(data.destinations);
       if (data.tripTemplates) setTemplates(data.tripTemplates);
-    } catch (error) {
-      console.error('Search error:', error);
+    } catch {
+      // Silent failure - results will be empty
     } finally {
       setIsLoading(false);
     }
