@@ -581,12 +581,67 @@ export default function AdminRequestDetailPage() {
               <select
                 value={updateStatus}
                 onChange={(e) => setUpdateStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-mist rounded-lg font-cairo bg-white"
+                className={`w-full px-4 py-2 border border-mist rounded-lg font-cairo bg-white ${
+                  updateStatus === 'COMPLETED' || updateStatus === 'CANCELLED' 
+                    ? 'border-red-300 bg-red-50' 
+                    : updateStatus === 'USER_APPROVED' || updateStatus === 'BOOKING_PENDING'
+                    ? 'border-orange-300 bg-orange-50'
+                    : ''
+                }`}
               >
                 {STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
+              
+              {/* Current vs New State Preview */}
+              {request.status !== updateStatus && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="font-cairo text-xs text-blue-700">
+                    <strong>تغيير الحالة:</strong> من 
+                    <span className="font-semibold mr-1">{STATUS_OPTIONS.find(s => s.value === request.status)?.label || request.status}</span>
+                    إلى
+                    <span className="font-semibold mr-1">{STATUS_OPTIONS.find(s => s.value === updateStatus)?.label || updateStatus}</span>
+                  </p>
+                </div>
+              )}
+              
+              {/* Sensitive State Warnings */}
+              {updateStatus === 'USER_APPROVED' && (
+                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="font-cairo text-xs text-orange-700 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>تم استلام موافقة العميل. هذا يعني أن العميل وافق على أحد الخيارات المقدمة ولا يعني تأكيد الحجز أو الدفع. يتطلب إجراء يدوي للمتابعة.</span>
+                  </p>
+                </div>
+              )}
+              
+              {updateStatus === 'BOOKING_PENDING' && (
+                <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                  <p className="font-cairo text-xs text-orange-700 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>الطلب ينتظر إجراءً يدويًا. هذا لا يعني توفر أو حجز فعلي. يجب المتابعة مع فريق الدعم.</span>
+                  </p>
+                </div>
+              )}
+              
+              {updateStatus === 'COMPLETED' && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-300 rounded-lg">
+                  <p className="font-cairo text-xs text-green-700 flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>مكتمل إداريًا:</strong> هذا يعني أن المعاملة تمت من الجانب الإداري فقط. لا يعني تأكيد الحجز أو إتمام الدفع أو توفر أي خدمة.</span>
+                  </p>
+                </div>
+              )}
+              
+              {updateStatus === 'CANCELLED' && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-300 rounded-lg">
+                  <p className="font-cairo text-xs text-red-700 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span><strong>ملغي:</strong> هذا يعني إلغاء المعاملة من جانب الأدمن. لا يعني استرداد أي مبالغ مدفوعة.</span>
+                  </p>
+                </div>
+              )}
             </div>
             <div>
               <label className="block font-cairo text-sm text-secondary mb-2">ملاحظات</label>
@@ -602,7 +657,11 @@ export default function AdminRequestDetailPage() {
               <button
                 onClick={handleUpdate}
                 disabled={isUpdating}
-                className="flex items-center gap-2 px-6 py-3 bg-champagne text-charcoal rounded-xl font-cairo font-semibold disabled:opacity-50"
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-cairo font-semibold disabled:opacity-50 ${
+                  updateStatus === 'COMPLETED' || updateStatus === 'CANCELLED'
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'bg-champagne text-charcoal hover:bg-champagne/80'
+                }`}
               >
                 <Save className="w-4 h-4" />
                 {isUpdating ? 'جاري الحفظ...' : 'حفظ التغييرات'}
@@ -618,9 +677,7 @@ export default function AdminRequestDetailPage() {
 
           <div className="mt-4 p-3 bg-sand/50 rounded-lg">
             <p className="font-cairo text-xs text-secondary">
-              <strong>تنبيه:</strong> تحديث الحالة لا يعني تأكيد الحجز أو الدفع.
-              الحالة &#8220;بانتظار الإجراء&#8221; تعني أن الطلب يحتاج متابعة يدوية.
-              الحالة &#8220;مكتمل إداريًا&#8221; تعني أن المعاملة تمت إداريًا ولا تعني تأكيد الحجز.
+              <strong>تنبيه:</strong> تحديث الحالة تشغيلية فقط ولا يعني تأكيد الحجز أو الدفع أو التوفر.
             </p>
           </div>
 
