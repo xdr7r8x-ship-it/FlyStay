@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import {ArrowLeft, Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, RefreshCw, MessageSquare, Send, Bell} from 'lucide-react';
+import {ArrowLeft, Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, RefreshCw, MessageSquare, Send, Bell, FileText} from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface TravelRequest {
@@ -200,6 +200,78 @@ export default function MyRequestDetailPage() {
     });
   };
 
+  // Next Step guidance based on status
+  const nextStepInfo = useMemo(() => {
+    if (!request) return null;
+    
+    switch (request.status) {
+      case 'NEW':
+        return {
+          title: 'طلبك وصل وسيتم مراجعته',
+          description: 'فريقنا سيقوم بمراجعة طلبك والتواصل معك قريبًا.',
+          icon: 'search',
+          color: 'blue'
+        };
+      case 'REVIEWING':
+        return {
+          title: 'الطلب تحت المراجعة',
+          description: 'فريقنا يقوم بمراجعة طلبك حاليًا.',
+          icon: 'cog',
+          color: 'yellow'
+        };
+      case 'OPTIONS_SENT':
+        return {
+          title: 'خيارات جديدة متاحة!',
+          description: 'راجع الخيارات المرسلة لك واختر ما يناسبك.',
+          icon: 'check',
+          color: 'purple'
+        };
+      case 'USER_APPROVED':
+        return {
+          title: 'تم استلام موافقتك',
+          description: 'تم استلام موافقتك وسيتم التعامل معها يدويًا.',
+          icon: 'clock',
+          color: 'orange'
+        };
+      case 'BOOKING_PENDING':
+        return {
+          title: 'الطلب يحتاج متابعة',
+          description: 'الطلب يحتاج متابعة يدوية من فريقنا.',
+          icon: 'hourglass',
+          color: 'orange'
+        };
+      case 'COMPLETED':
+        return {
+          title: 'الطلب مكتمل إداريًا',
+          description: 'تمت المعاملة من جانبنا.',
+          icon: 'check-circle',
+          color: 'green'
+        };
+      case 'CANCELLED':
+        return {
+          title: 'الطلب ملغي',
+          description: 'تم إلغاء هذا الطلب.',
+          icon: 'x',
+          color: 'red'
+        };
+      default:
+        return null;
+    }
+  }, [request]);
+
+  const getStatusIcon = (icon: string) => {
+    switch (icon) {
+      case 'search': return <Clock className="w-5 h-5" />;
+      case 'cog': return <AlertCircle className="w-5 h-5" />;
+      case 'check': return <CheckCircle className="w-5 h-5" />;
+      case 'clock': return <Clock className="w-5 h-5" />;
+      case 'hourglass': return <Clock className="w-5 h-5" />;
+      case 'check-circle': return <CheckCircle className="w-5 h-5" />;
+      case 'x': return <AlertCircle className="w-5 h-5" />;
+      default: return <Clock className="w-5 h-5" />;
+    }
+  };
+
   // Loading state
   if (authState === 'loading') {
     return (
@@ -303,6 +375,41 @@ export default function MyRequestDetailPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 -mt-6">
+        {/* Phase 6A: Next Step Section */}
+        {nextStepInfo && (
+          <div className={`rounded-xl p-4 mb-6 ${
+            nextStepInfo.color === 'blue' ? 'bg-blue-50 border border-blue-200' :
+            nextStepInfo.color === 'yellow' ? 'bg-yellow-50 border border-yellow-200' :
+            nextStepInfo.color === 'purple' ? 'bg-purple-50 border border-purple-200' :
+            nextStepInfo.color === 'orange' ? 'bg-orange-50 border border-orange-200' :
+            nextStepInfo.color === 'green' ? 'bg-green-50 border border-green-200' :
+            nextStepInfo.color === 'red' ? 'bg-red-50 border border-red-200' :
+            'bg-gray-50 border border-gray-200'
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                nextStepInfo.color === 'blue' ? 'bg-blue-100 text-blue-600' :
+                nextStepInfo.color === 'yellow' ? 'bg-yellow-100 text-yellow-600' :
+                nextStepInfo.color === 'purple' ? 'bg-purple-100 text-purple-600' :
+                nextStepInfo.color === 'orange' ? 'bg-orange-100 text-orange-600' :
+                nextStepInfo.color === 'green' ? 'bg-green-100 text-green-600' :
+                nextStepInfo.color === 'red' ? 'bg-red-100 text-red-600' :
+                'bg-gray-100 text-gray-600'
+              }`}>
+                {getStatusIcon(nextStepInfo.icon)}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="w-4 h-4 text-champagne" />
+                  <h2 className="font-cairo text-lg font-bold">ما الخطوة القادمة؟</h2>
+                </div>
+                <h2 className="font-cairo text-lg font-bold mb-1">{nextStepInfo.title}</h2>
+                <p className="font-cairo text-sm opacity-80">{nextStepInfo.description}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Status Banner */}
         <div className={`rounded-xl p-4 mb-6 ${STATUS_COLORS[request.status] || 'bg-gray-100'}`}>
           <div className="flex items-center gap-3">
