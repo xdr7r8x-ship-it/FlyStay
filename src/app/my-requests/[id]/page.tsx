@@ -546,9 +546,16 @@ export default function MyRequestDetailPage() {
             <h3 className="font-cairo text-lg font-bold text-charcoal">مراسلات الطلب</h3>
           </div>
           
+          {/* Safety Notice */}
+          <div className="mb-3 p-2 bg-sand/30 border border-sand rounded-lg">
+            <p className="font-cairo text-xs text-charcoal/70">
+              <strong>تنبيه:</strong> الرسائل للمتابعة والتنسيق فقط، ولا تُعد تأكيدًا للحجز أو الدفع أو توفر الخدمة.
+            </p>
+          </div>
+          
           <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
             {messages.length === 0 ? (
-              <p className="font-cairo text-sm text-secondary text-center py-4">لا توجد رسائل</p>
+              <p className="font-cairo text-sm text-secondary text-center py-4">لا توجد رسائل بعد. يمكنك إرسال استفسار لفريق FlyStay.</p>
             ) : (
               messages.map((msg) => (
                 <div key={msg.id} className={`p-3 rounded-lg ${msg.senderRole === 'SYSTEM' ? 'bg-sand/50' : msg.senderRole === 'ADMIN' ? 'bg-champagne/10 mr-4' : 'bg-white border border-mist ml-4'}`}>
@@ -572,7 +579,7 @@ export default function MyRequestDetailPage() {
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
-              placeholder="اكتب رسالة..."
+              placeholder="اكتب استفسارًا لفريقنا..."
               className="flex-1 px-4 py-2 border border-mist rounded-lg font-cairo text-sm"
             />
             <button

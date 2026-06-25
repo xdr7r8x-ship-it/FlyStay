@@ -874,13 +874,20 @@ export default function AdminRequestDetailPage() {
 
             {/* Send Message Form */}
             <div className="bg-white rounded-xl border border-mist p-4">
+              {/* Safety Notice */}
+              <div className="mb-3 p-2 bg-sand/30 border border-sand rounded-lg">
+                <p className="font-cairo text-xs text-charcoal/70">
+                  <strong>تنبيه:</strong> اكتب رسائل تشغيلية واضحة. تجنب تأكيد الحجز أو الدفع أو التوفر في الرسائل.
+                </p>
+              </div>
+              
               <textarea
                 id="messageText"
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
-                rows={2}
+                rows={3}
                 className="w-full px-4 py-2 border border-mist rounded-lg font-cairo resize-none mb-3"
-                placeholder="اكتب رسالة للمستخدم..."
+                placeholder="اكتب رسالة تشغيلية واضحة للمستخدم..."
               />
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -890,7 +897,7 @@ export default function AdminRequestDetailPage() {
                     onChange={(e) => setMessageInternal(e.target.checked)}
                     className="w-4 h-4 accent-charcoal"
                   />
-                  <span className="font-cairo text-sm text-secondary">رسالة داخلية فقط</span>
+                  <span className="font-cairo text-sm text-secondary">رسالة داخلية فقط (غير مرئية للمستخدم)</span>
                 </label>
                 <button
                   onClick={handleSendMessage}
@@ -901,6 +908,15 @@ export default function AdminRequestDetailPage() {
                   {isSending ? 'جاري...' : 'إرسال'}
                 </button>
               </div>
+              
+              {/* Visible Message Warning */}
+              {!messageInternal && messageText.trim() && (
+                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="font-cairo text-xs text-blue-700">
+                    هذه الرسالة ستظهر للمستخدم. تأكد من أن النص لا يوحي بتأكيد الحجز أو الدفع.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
