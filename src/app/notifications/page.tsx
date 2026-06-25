@@ -11,7 +11,7 @@ interface Notification {
   type: string;
   title: string;
   message: string;
-  isRead: boolean;
+  read: boolean;
   createdAt: string;
 }
 
@@ -43,7 +43,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <main className="min-h-screen bg-ivory pb-24">
@@ -90,7 +90,7 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 className={`bg-sand border rounded-2xl p-4 transition-all hover:shadow-md ${
-                  notification.isRead ? 'border-mist' : 'border-champagne/30'
+                  notification.read ? 'border-mist' : 'border-champagne/30'
                 }`}
               >
                 <div className="flex gap-4">
@@ -124,7 +124,7 @@ export default function NotificationsPage() {
                           {notification.message}
                         </p>
                       </div>
-                      {!notification.isRead && (
+                      {!notification.read && (
                         <span className="w-2.5 h-2.5 bg-champagne rounded-full flex-shrink-0 mt-2" />
                       )}
                     </div>
