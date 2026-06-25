@@ -207,52 +207,73 @@ export default function MyRequestDetailPage() {
     switch (request.status) {
       case 'NEW':
         return {
-          title: 'طلبك وصل وسيتم مراجعته',
-          description: 'فريقنا سيقوم بمراجعة طلبك والتواصل معك قريبًا.',
+          title: 'طلبك وصل',
+          titleSub: 'سيتم مراجعته قريبًا',
+          description: 'فريقنا سيقوم بمراجعة طلبك والتواصل معك عبر الرسائل. يرجى الانتظار.',
           icon: 'search',
-          color: 'blue'
+          color: 'blue',
+          action: 'انتظار',
+          actionHint: 'يمكنك إرسال رسالة للفريق إذا كان لديك استفسار'
         };
       case 'REVIEWING':
         return {
-          title: 'الطلب تحت المراجعة',
-          description: 'فريقنا يقوم بمراجعة طلبك حاليًا.',
+          title: 'الطلب قيد المراجعة',
+          titleSub: 'فريقنا يعمل عليه',
+          description: 'فريقنا يقوم بمراجعة طلبك حاليًا وإعداد الخيارات المناسبة لك.',
           icon: 'cog',
-          color: 'yellow'
+          color: 'yellow',
+          action: 'انتظار',
+          actionHint: 'سيصلك إشعار عند تجهيز الخيارات'
         };
       case 'OPTIONS_SENT':
         return {
-          title: 'خيارات جديدة متاحة!',
-          description: 'راجع الخيارات المرسلة لك واختر ما يناسبك.',
+          title: 'لديك خيارات جديدة',
+          titleSub: 'راجع واختر ما يناسبك',
+          description: 'أرسلنا لك خيارات مبدئية للاختيار من بينها. راجع كل خيار واختر ما يناسب احتياجاتك.',
           icon: 'check',
-          color: 'purple'
+          color: 'purple',
+          action: 'مراجعة',
+          actionHint: 'اضغط على "الخيارات" أعلى الصفحة لعرض واختيار ما يناسبك'
         };
       case 'USER_APPROVED':
         return {
-          title: 'تم استلام موافقتك',
-          description: 'تم استلام موافقتك وسيتم التعامل معها يدويًا.',
+          title: 'تم استلام اختيارك',
+          titleSub: 'جاري المتابعة يدويًا',
+          description: 'شكرًا لاختيارك! فريقنا يستلم اختيارك ويعمل على متابعة طلبك. هذه المرحلة لا تعني تأكيد الحجز.',
           icon: 'clock',
-          color: 'orange'
+          color: 'orange',
+          action: 'متابعة',
+          actionHint: 'سنتواصل معك قريبًا. يمكنك إرسال رسالة للاستفسار'
         };
       case 'BOOKING_PENDING':
         return {
           title: 'الطلب يحتاج متابعة',
-          description: 'الطلب يحتاج متابعة يدوية من فريقنا.',
+          titleSub: 'جاري العمل عليه',
+          description: 'طلبك يحتاج إلى متابعة خاصة من فريقنا. سنعمل على إنهاء الإجراءات اللازمة.',
           icon: 'hourglass',
-          color: 'orange'
+          color: 'orange',
+          action: 'انتظار',
+          actionHint: 'سنتواصل معك قريبًا. لا يعني هذا توفر أو حجز فعلي'
         };
       case 'COMPLETED':
         return {
-          title: 'الطلب مكتمل إداريًا',
-          description: 'تمت المعاملة من جانبنا.',
+          title: 'تمت المعاملة إداريًا',
+          titleSub: 'من الجانب التشغيلي',
+          description: 'تمت الإجراءات الإدارية لهذا الطلب. للتواصل أو الاستفسارات، استخدم الرسائل.',
           icon: 'check-circle',
-          color: 'green'
+          color: 'green',
+          action: 'اتصال',
+          actionHint: 'لأي استفسار، أرسل رسالة للفريق'
         };
       case 'CANCELLED':
         return {
-          title: 'الطلب ملغي',
-          description: 'تم إلغاء هذا الطلب.',
+          title: 'تم إلغاء الطلب',
+          titleSub: 'لم يتم إتمام المعاملة',
+          description: 'تم إلغاء هذا الطلب. يمكنك تقديم طلب جديد إذا رغبت.',
           icon: 'x',
-          color: 'red'
+          color: 'red',
+          action: 'جديد',
+          actionHint: 'لإنشاء طلب جديد، استخدم نموذج طلب جديد'
         };
       default:
         return null;
@@ -375,9 +396,9 @@ export default function MyRequestDetailPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 -mt-6">
-        {/* Phase 6A: Next Step Section */}
+        {/* Phase 6C: Enhanced Next Step Section */}
         {nextStepInfo && (
-          <div className={`rounded-xl p-4 mb-6 ${
+          <div className={`rounded-xl p-5 mb-6 ${
             nextStepInfo.color === 'blue' ? 'bg-blue-50 border border-blue-200' :
             nextStepInfo.color === 'yellow' ? 'bg-yellow-50 border border-yellow-200' :
             nextStepInfo.color === 'purple' ? 'bg-purple-50 border border-purple-200' :
@@ -386,8 +407,9 @@ export default function MyRequestDetailPage() {
             nextStepInfo.color === 'red' ? 'bg-red-50 border border-red-200' :
             'bg-gray-50 border border-gray-200'
           }`}>
-            <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            {/* Header with icon */}
+            <div className="flex items-start gap-4 mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
                 nextStepInfo.color === 'blue' ? 'bg-blue-100 text-blue-600' :
                 nextStepInfo.color === 'yellow' ? 'bg-yellow-100 text-yellow-600' :
                 nextStepInfo.color === 'purple' ? 'bg-purple-100 text-purple-600' :
@@ -401,14 +423,51 @@ export default function MyRequestDetailPage() {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <FileText className="w-4 h-4 text-champagne" />
-                  <h2 className="font-cairo text-lg font-bold">ما الخطوة القادمة؟</h2>
+                  <h2 className="font-cairo text-base font-bold text-charcoal">ما الخطوة القادمة؟</h2>
                 </div>
-                <h2 className="font-cairo text-lg font-bold mb-1">{nextStepInfo.title}</h2>
-                <p className="font-cairo text-sm opacity-80">{nextStepInfo.description}</p>
+                <h2 className="font-cairo text-xl font-bold mb-1">{nextStepInfo.title}</h2>
+                <p className="font-cairo text-sm text-charcoal/70">{nextStepInfo.titleSub}</p>
               </div>
+            </div>
+            
+            {/* Description */}
+            <p className="font-cairo text-sm mb-4">{nextStepInfo.description}</p>
+            
+            {/* Action Card */}
+            <div className={`rounded-lg p-3 ${
+              nextStepInfo.color === 'blue' ? 'bg-blue-100/50' :
+              nextStepInfo.color === 'yellow' ? 'bg-yellow-100/50' :
+              nextStepInfo.color === 'purple' ? 'bg-purple-100/50' :
+              nextStepInfo.color === 'orange' ? 'bg-orange-100/50' :
+              nextStepInfo.color === 'green' ? 'bg-green-100/50' :
+              nextStepInfo.color === 'red' ? 'bg-red-100/50' :
+              'bg-gray-100/50'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`px-2 py-1 rounded text-xs font-cairo font-semibold ${
+                  nextStepInfo.color === 'blue' ? 'bg-blue-200 text-blue-800' :
+                  nextStepInfo.color === 'yellow' ? 'bg-yellow-200 text-yellow-800' :
+                  nextStepInfo.color === 'purple' ? 'bg-purple-200 text-purple-800' :
+                  nextStepInfo.color === 'orange' ? 'bg-orange-200 text-orange-800' :
+                  nextStepInfo.color === 'green' ? 'bg-green-200 text-green-800' :
+                  nextStepInfo.color === 'red' ? 'bg-red-200 text-red-800' :
+                  'bg-gray-200 text-gray-800'
+                }`}>
+                  {nextStepInfo.action}
+                </span>
+                <span className="font-cairo text-xs text-charcoal/70">—</span>
+              </div>
+              <p className="font-cairo text-xs text-charcoal/80">{nextStepInfo.actionHint}</p>
             </div>
           </div>
         )}
+
+        {/* Safety Notice */}
+        <div className="bg-sand/30 border border-sand rounded-lg p-3 mb-6">
+          <p className="font-cairo text-xs text-charcoal/70 text-center">
+            <strong className="text-charcoal">تنبيه:</strong> المتابعة داخل FlyStay لا تعني تأكيد الحجز أو الدفع أو توفر الخدمة حتى يتم إشعارك رسميًا.
+          </p>
+        </div>
 
         {/* Status Banner */}
         <div className={`rounded-xl p-4 mb-6 ${STATUS_COLORS[request.status] || 'bg-gray-100'}`}>
