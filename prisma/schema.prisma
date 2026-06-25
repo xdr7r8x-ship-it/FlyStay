@@ -96,6 +96,7 @@ model User {
   travelRequests TravelRequest[]
   quotes        Quote[]
   travelRequestMessages TravelRequestMessage[]
+  supportTickets SupportTicket[]
 
   @@map("users")
 }
@@ -618,4 +619,84 @@ model Quote {
   @@index([userId])
   @@index([travelRequestId])
   @@index([status])
+}
+
+model SupportTicket {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  requestId     String?   @map("request_id")
+  subject       String
+  message       String
+  status        String    @default("OPEN")
+  priority      String    @default("MEDIUM")
+  assignedToId  String?   @map("assigned_to_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  closedAt      DateTime? @map("closed_at")
+
+  user      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  SupportTicketMessage[]
+
+  @@map("support_tickets")
+  @@index([userId])
+  @@index([status])
+  @@index([assignedToId])
+}
+
+model SupportTicketMessage {
+  id         String   @id @default(cuid())
+  ticketId   String   @map("ticket_id")
+  senderId   String?  @map("sender_id")
+  senderRole String   @default("USER") @map("sender_role")
+  body       String
+  internal   Boolean @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("support_ticket_messages")
+  @@index([ticketId])
+  @@index([senderId])
+}
+
+model RolePermission {
+  id         String   @id @default(cuid())
+  role       String
+  permission String
+  enabled    Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([role, permission])
+  @@map("role_permissions")
+  @@index([role])
+}
+
+model SystemSetting {
+  id              String    @id @default(cuid())
+  key             String    @unique
+  value           String
+  type            String    @default("STRING")
+  groupName       String    @default("general") @map("group_name")
+  labelAr         String?   @map("label_ar")
+  descriptionAr   String?   @map("description_ar")
+  updatedById     String?   @map("updated_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+  @@index([key])
+  @@index([groupName])
+}
+
+model AdminSession {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("admin_sessions")
+  @@index([userId])
 }
