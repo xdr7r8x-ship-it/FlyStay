@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, RefreshCw, MessageSquare, Send } from 'lucide-react';
+import {ArrowLeft, Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, RefreshCw, MessageSquare, Send, Bell} from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface TravelRequest {
@@ -98,6 +98,7 @@ export default function MyRequestDetailPage() {
   const [isSending, setIsSending] = useState(false);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const loadRequest = useCallback(async () => {
     setAuthState('loading');
@@ -137,15 +138,28 @@ export default function MyRequestDetailPage() {
     }
   }, [requestId]);
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await fetch('/api/notifications', { credentials: 'include' });
+      if (!response.ok) return;
+      const data = await response.json();
+      setUnreadNotifications(Number(data.unreadCount || 0));
+    } catch {
+      setUnreadNotifications(0);
+    }
+  }, []);
+
   useEffect(() => {
     loadRequest();
+    loadNotifications();
+    // Per-request mark-as-read is blocked by current Notification schema because notifications do not store requestId/entityId.
     
     // Load messages
     fetch('/api/travel-requests/' + requestId + '/messages', { credentials: 'include' })
       .then(r => r.ok && r.json())
       .then(d => d && setMessages(d.data || []))
       .catch(() => {});
-  }, [loadRequest, requestId]);
+  }, [loadRequest, loadNotifications, requestId]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim()) return;
@@ -268,6 +282,14 @@ export default function MyRequestDetailPage() {
       <Header />
 
       <div className="bg-charcoal text-white py-8 px-4">
+        {unreadNotifications > 0 && (
+          <div className="max-w-4xl mx-auto mb-3">
+            <span className="inline-flex items-center gap-2 rounded-full bg-champagne px-3 py-1 font-cairo text-sm font-bold text-charcoal">
+              <Bell className="h-4 w-4" />
+              تحديث جديد
+            </span>
+          </div>
+        )}
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-4 mb-2">
             <Link href="/my-requests" className="text-champagne hover:text-white">
