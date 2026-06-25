@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, ChevronDown, Save, X, ArrowLeft, Eye, Search, Filter } from 'lucide-react';
+import {Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, ChevronDown, Save, X, ArrowLeft, Eye, Search, Filter, Bell} from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface TravelRequest {
@@ -82,6 +82,7 @@ export default function AdminRequestsPage() {
   const [requests, setRequests] = useState<TravelRequest[]>([]);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [updateStatus, setUpdateStatus] = useState<string>('');
   const [updateNotes, setUpdateNotes] = useState<string>('');
@@ -127,9 +128,21 @@ export default function AdminRequestsPage() {
     }
   }, [statusFilter, serviceFilter, budgetFilter, searchQuery]);
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await fetch('/api/notifications', { credentials: 'include' });
+      if (!response.ok) return;
+      const data = await response.json();
+      setUnreadNotifications(Number(data.unreadCount || 0));
+    } catch {
+      setUnreadNotifications(0);
+    }
+  }, []);
+
   useEffect(() => {
     loadRequests();
-  }, [loadRequests]);
+    loadNotifications();
+  }, [loadRequests, loadNotifications]);
 
   const stats: Stats = {
     total: requests.length,
@@ -255,8 +268,18 @@ export default function AdminRequestsPage() {
             </Link>
             <span className="font-cairo text-champagne text-sm">لوحة التحكم</span>
           </div>
-          <h1 className="font-cairo text-3xl font-bold">إدارة طلبات السفر</h1>
-          <p className="font-cairo text-white/70 mt-1">عرض وتعديل حالة الطلبات</p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="font-cairo text-3xl font-bold">إدارة طلبات السفر</h1>
+              <p className="font-cairo text-white/70 mt-1">عرض وتعديل حالة الطلبات</p>
+            </div>
+            {unreadNotifications > 0 && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-champagne px-3 py-1 font-cairo text-sm font-bold text-charcoal">
+                <Bell className="h-4 w-4" />
+                {unreadNotifications} جديد
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

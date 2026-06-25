@@ -3,6 +3,7 @@ import { requireRoles } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { writeAuditLog } from '@/lib/admin-audit';
 import { createUserMessage, getAllMessages } from '@/lib/travel-request-messages';
+import { notifyUserNewMessage } from '@/lib/notifications';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await requireRoles(request, ['ADMIN']);
@@ -34,6 +35,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
     }
 
+    const travelRequest = await prisma.travelRequest.findUnique({
+      where: { id: params.id },
+      select: { userId: true },
+    });
+
+    if (!travelRequest) {
+      return NextResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'الطلب غير موجود.' } },
+        { status: 404 },
+      );
+    }
+
     const visibility = body.visibility === 'INTERNAL' ? 'INTERNAL' : 'USER';
 
     const message = await createUserMessage(
@@ -43,6 +56,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       body.bodyAr.trim(),
       visibility
     );
+
+    if (visibility === 'USER') {
+      await notifyUserNewMessage(travelRequest.userId);
+    }
 
     await writeAuditLog({
       request,

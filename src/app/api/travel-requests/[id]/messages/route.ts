@@ -3,6 +3,7 @@ import { getAuthUserFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createUserMessage, getUserMessages } from '@/lib/travel-request-messages';
 import { writeAuditLog } from '@/lib/admin-audit';
+import { notifyAdminNewMessage } from '@/lib/notifications';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const user = await getAuthUserFromRequest(request);
@@ -87,6 +88,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       body.bodyAr.trim(),
       'USER'
     );
+
+    await notifyAdminNewMessage(user.userId);
 
     await writeAuditLog({
       request,

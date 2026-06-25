@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, Eye, RefreshCw } from 'lucide-react';
+import {Clock, MapPin, Users, Calendar, CheckCircle, AlertCircle, Lock, Eye, RefreshCw, Bell} from 'lucide-react';
 import Header from '@/components/layout/Header';
 
 interface TravelRequest {
@@ -66,6 +66,7 @@ export default function MyRequestsPage() {
   const [requests, setRequests] = useState<TravelRequest[]>([]);
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const loadRequests = useCallback(async () => {
     setAuthState('loading');
@@ -94,9 +95,21 @@ export default function MyRequestsPage() {
     }
   }, []);
 
+  const loadNotifications = useCallback(async () => {
+    try {
+      const response = await fetch('/api/notifications', { credentials: 'include' });
+      if (!response.ok) return;
+      const data = await response.json();
+      setUnreadNotifications(Number(data.unreadCount || 0));
+    } catch {
+      setUnreadNotifications(0);
+    }
+  }, []);
+
   useEffect(() => {
     loadRequests();
-  }, [loadRequests]);
+    loadNotifications();
+  }, [loadRequests, loadNotifications]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -170,10 +183,20 @@ export default function MyRequestsPage() {
 
       <div className="bg-charcoal text-white py-8 px-4">
         <div className="max-w-4xl mx-auto">
-          <h1 className="font-cairo text-2xl font-bold">طلباتي</h1>
-          <p className="font-cairo text-champagne text-sm mt-1">
-            {requests.length} طلب
-          </p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="font-cairo text-2xl font-bold">طلباتي</h1>
+              <p className="font-cairo text-champagne text-sm mt-1">
+                {requests.length} طلب
+              </p>
+            </div>
+            {unreadNotifications > 0 && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-champagne px-3 py-1 font-cairo text-sm font-bold text-charcoal">
+                <Bell className="h-4 w-4" />
+                {unreadNotifications} جديد
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

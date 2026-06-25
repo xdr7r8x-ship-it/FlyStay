@@ -3,6 +3,7 @@ import { getAuthUserFromRequest } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createSystemMessage } from '@/lib/travel-request-messages';
 import { writeAuditLog } from '@/lib/admin-audit';
+import { notifyAdminOptionSelected } from '@/lib/notifications';
 
 function unauthorized() {
   return NextResponse.json(
@@ -94,6 +95,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       'USER',
       'OPTION'
     );
+
+    await notifyAdminOptionSelected(user.userId);
 
     await writeAuditLog({
       request,

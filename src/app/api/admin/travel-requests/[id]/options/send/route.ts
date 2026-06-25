@@ -3,6 +3,7 @@ import { requireRoles } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { writeAuditLog } from '@/lib/admin-audit';
 import { createSystemMessage } from '@/lib/travel-request-messages';
+import { notifyUserOptionsReady } from '@/lib/notifications';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const authResult = await requireRoles(request, ['ADMIN']);
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       'USER',
       'OPTION'
     );
+
+    await notifyUserOptionsReady(updatedRequest.userId);
 
     return NextResponse.json({
       success: true,
