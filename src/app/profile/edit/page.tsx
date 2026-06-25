@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { User, Mail, Phone, Shield, Calendar, ArrowRight, ArrowLeft, Lock, CheckCircle, Loader2 } from 'lucide-react';
+import { User, Mail, Phone, Shield, Calendar, ArrowRight, Lock, CheckCircle, Loader2 } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import BottomNav from '@/components/layout/BottomNav';
 
@@ -10,9 +10,8 @@ interface UserData {
   id: string;
   name: string;
   email: string;
-  phone: string | null;
+  phone?: string | null;
   role: string;
-  createdAt?: string;
 }
 
 export default function ProfileEditPage() {
@@ -31,30 +30,24 @@ export default function ProfileEditPage() {
         const data = await res.json();
         if (data.user) {
           setIsLoggedIn(true);
-          // Fetch full user details
-          const userRes = await fetch('/api/admin/users/' + data.user.id);
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            setUser(userData.user);
-          } else {
-            setUser(data.user);
-          }
+          // Use only user-safe API data
+          setUser({
+            id: data.user.id,
+            name: data.user.name || data.user.email?.split('@')[0] || 'مستخدم',
+            email: data.user.email,
+            role: data.user.role,
+          });
         }
       }
-    } catch (e) {
-      console.error('Failed to fetch user');
+    } catch {
+      // Silent failure - user data not available
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return 'غير متوفر';
-    return new Date(dateStr).toLocaleDateString('ar-SA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const formatDate = () => {
+    return 'غير متوفر';
   };
 
   const getRoleLabel = (role: string) => {
@@ -185,7 +178,7 @@ export default function ProfileEditPage() {
               </div>
               <div className="flex-1">
                 <p className="font-cairo text-sm text-secondary">تاريخ التسجيل</p>
-                <p className="font-cairo text-charcoal">{formatDate(user.createdAt)}</p>
+                <p className="font-cairo text-charcoal">{formatDate()}</p>
               </div>
             </div>
           </div>

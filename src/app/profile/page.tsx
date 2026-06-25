@@ -34,8 +34,8 @@ export default function ProfilePage() {
         setIsLoggedIn(true);
         setUser(data.user);
       }
-    } catch (e) {
-      console.error('Failed to fetch user');
+    } catch {
+      // Silent failure
     } finally {
       setLoading(false);
     }
